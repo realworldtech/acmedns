@@ -19,43 +19,99 @@
 
         <!-- Main Content -->
         <main class="container mx-auto px-4 py-8 max-w-2xl">
-            <!-- Lookup Form -->
+            <!-- Mode Toggle -->
             <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
-                <h2 class="text-xl font-semibold mb-4">Look Up Your ACME DNS Configuration</h2>
-                <p class="text-gray-600 mb-6">Enter your API key and domain to retrieve your ACME DNS setup instructions.</p>
-                
-                <form @submit.prevent="lookupConfig()" class="space-y-4">
-                    <div>
-                        <label for="apiKey" class="block text-sm font-medium text-gray-700 mb-2">API Key</label>
-                        <input type="password" id="apiKey" name="apiKey" required 
-                               x-model="form.apiKey"
-                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" 
-                               placeholder="Enter your API key">
+                <div class="flex justify-center mb-6">
+                    <div class="bg-gray-100 p-1 rounded-lg">
+                        <button @click="mode = 'lookup'" 
+                                :class="mode === 'lookup' ? 'bg-green-600 text-white' : 'text-gray-600'"
+                                class="px-4 py-2 rounded-md transition-colors">
+                            Look Up Configuration
+                        </button>
+                        <button @click="mode = 'register'" 
+                                :class="mode === 'register' ? 'bg-green-600 text-white' : 'text-gray-600'"
+                                class="px-4 py-2 rounded-md transition-colors">
+                            Register New Domain
+                        </button>
                     </div>
+                </div>
+
+                <!-- Lookup Form -->
+                <div x-show="mode === 'lookup'">
+                    <h2 class="text-xl font-semibold mb-4">Look Up Your ACME DNS Configuration</h2>
+                    <p class="text-gray-600 mb-6">Enter your API key and domain to retrieve your ACME DNS setup instructions.</p>
                     
-                    <div>
-                        <label for="domain" class="block text-sm font-medium text-gray-700 mb-2">Domain</label>
-                        <input type="text" id="domain" name="domain" required 
-                               x-model="form.domain"
-                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" 
-                               placeholder="example.com">
-                    </div>
+                    <form @submit.prevent="lookupConfig()" class="space-y-4">
+                        <div>
+                            <label for="lookupApiKey" class="block text-sm font-medium text-gray-700 mb-2">API Key</label>
+                            <input type="password" id="lookupApiKey" name="apiKey" required 
+                                   x-model="form.apiKey"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" 
+                                   placeholder="Enter your API key">
+                        </div>
+                        
+                        <div>
+                            <label for="lookupDomain" class="block text-sm font-medium text-gray-700 mb-2">Domain</label>
+                            <input type="text" id="lookupDomain" name="domain" required 
+                                   x-model="form.domain"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" 
+                                   placeholder="example.com">
+                        </div>
+                        
+                        <button type="submit" :disabled="loading"
+                                class="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50">
+                            <span x-show="!loading">Look Up Configuration</span>
+                            <span x-show="loading">Looking up...</span>
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Register Form -->
+                <div x-show="mode === 'register'">
+                    <h2 class="text-xl font-semibold mb-4">Register New Domain</h2>
+                    <p class="text-gray-600 mb-6">Register a new domain with ACME DNS to get your configuration details.</p>
                     
-                    <button type="submit" :disabled="loading"
-                            class="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50">
-                        <span x-show="!loading">Look Up Configuration</span>
-                        <span x-show="loading">Looking up...</span>
-                    </button>
-                </form>
+                    <form @submit.prevent="registerDomain()" class="space-y-4">
+                        <div>
+                            <label for="registerApiKey" class="block text-sm font-medium text-gray-700 mb-2">API Key</label>
+                            <input type="password" id="registerApiKey" name="apiKey" required 
+                                   x-model="form.apiKey"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" 
+                                   placeholder="Enter your API key">
+                        </div>
+                        
+                        <div>
+                            <label for="registerDomain" class="block text-sm font-medium text-gray-700 mb-2">Domain</label>
+                            <input type="text" id="registerDomain" name="domain" required 
+                                   x-model="form.domain"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" 
+                                   placeholder="example.com">
+                            <p class="text-sm text-gray-500 mt-1">The domain you want to generate SSL certificates for</p>
+                        </div>
+                        
+                        <button type="submit" :disabled="loading"
+                                class="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50">
+                            <span x-show="!loading">Register Domain</span>
+                            <span x-show="loading">Registering...</span>
+                        </button>
+                    </form>
+                </div>
                 
                 <div x-show="error" class="mt-4 p-4 bg-red-100 border border-red-300 rounded-lg">
                     <p class="text-red-700" x-text="error"></p>
+                    <div x-show="error.includes('No registrations found') && mode === 'lookup'" class="mt-2">
+                        <button @click="mode = 'register'; error = ''" 
+                                class="text-sm bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded">
+                            Register This Domain Instead
+                        </button>
+                    </div>
                 </div>
             </div>
 
             <!-- Results -->
             <div x-show="config" class="bg-white rounded-lg shadow-lg p-6">
-                <h2 class="text-xl font-semibold mb-4 text-green-600">Configuration Found!</h2>
+                <h2 class="text-xl font-semibold mb-4 text-green-600" 
+                    x-text="config?.isNewRegistration ? 'Domain Registered Successfully!' : 'Configuration Found!'"></h2>
                 
                 <!-- CNAME Record -->
                 <div class="mb-6">
@@ -105,6 +161,32 @@
                                 <span x-text="config?.registration_info?.registered_at ? new Date(config.registration_info.registered_at).toLocaleDateString() : ''"></span>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <!-- ACME DNS Credentials (for new registrations) -->
+                <div x-show="config?.isNewRegistration && config?.registration_info?.username" class="mb-6">
+                    <h3 class="text-lg font-medium mb-2">ACME DNS Credentials</h3>
+                    <p class="text-sm text-amber-600 mb-3">⚠️ Save these credentials securely - they will not be shown again!</p>
+                    <div class="bg-amber-50 border border-amber-200 p-4 rounded-lg">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                            <div>
+                                <strong>Username:</strong><br>
+                                <code class="bg-white px-2 py-1 rounded font-mono text-xs" x-text="config?.registration_info?.username"></code>
+                            </div>
+                            <div>
+                                <strong>Password:</strong><br>
+                                <code class="bg-white px-2 py-1 rounded font-mono text-xs" x-text="config?.registration_info?.password"></code>
+                            </div>
+                            <div class="md:col-span-2">
+                                <strong>Full Domain:</strong><br>
+                                <code class="bg-white px-2 py-1 rounded font-mono text-xs" x-text="config?.registration_info?.fulldomain"></code>
+                            </div>
+                        </div>
+                        <button @click="copyToClipboard(`Username: ${config?.registration_info?.username}\nPassword: ${config?.registration_info?.password}\nFull Domain: ${config?.registration_info?.fulldomain}`)" 
+                                class="mt-3 text-sm bg-amber-600 hover:bg-amber-700 text-white px-3 py-1 rounded">
+                            Copy All Credentials
+                        </button>
                     </div>
                 </div>
 
@@ -161,6 +243,7 @@ dns_acmedns_registration_file = /path/to/acmedns-registration.json`"></div>
     <script>
         function lookupApp() {
             return {
+                mode: 'lookup', // 'lookup' or 'register'
                 loading: false,
                 error: '',
                 config: null,
@@ -201,6 +284,60 @@ dns_acmedns_registration_file = /path/to/acmedns-registration.json`"></div>
                     }
                 },
 
+                async registerDomain() {
+                    this.loading = true;
+                    this.error = '';
+                    this.config = null;
+                    
+                    try {
+                        const response = await fetch('/api/register', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-API-Key': this.form.apiKey
+                            },
+                            body: JSON.stringify({
+                                domain: this.form.domain
+                            })
+                        });
+
+                        const data = await response.json();
+
+                        if (response.ok) {
+                            // Convert registration response to config format
+                            this.config = {
+                                domain: this.form.domain,
+                                acme_dns_server: "acmedns.realworld.net.au",
+                                subdomain: data.subdomain,
+                                isNewRegistration: true,
+                                cname_record: {
+                                    name: `_acme-challenge.${this.form.domain}`,
+                                    value: `${data.subdomain}.acmedns.realworld.net.au`,
+                                    type: "CNAME"
+                                },
+                                registration_info: {
+                                    registered_at: new Date().toISOString(),
+                                    username: data.username,
+                                    password: data.password,
+                                    fulldomain: data.fulldomain
+                                },
+                                instructions: {
+                                    step1: `Add this CNAME record to your DNS: _acme-challenge.${this.form.domain} CNAME ${data.subdomain}.acmedns.realworld.net.au`,
+                                    step2: "Configure your ACME client to use DNS-01 challenge with acme-dns",
+                                    step3: "Use the subdomain and credentials provided for certificate requests"
+                                }
+                            };
+                        } else {
+                            this.error = data.error || 'Failed to register domain';
+                        }
+                    } catch (error) {
+                        this.error = 'Network error. Please try again.';
+                        console.error('Registration error:', error);
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+
                 async copyToClipboard(text) {
                     try {
                         await navigator.clipboard.writeText(text);
@@ -217,6 +354,7 @@ dns_acmedns_registration_file = /path/to/acmedns-registration.json`"></div>
                     this.error = '';
                     this.form.apiKey = '';
                     this.form.domain = '';
+                    this.mode = 'lookup';
                 }
             }
         }
