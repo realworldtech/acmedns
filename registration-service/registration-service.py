@@ -131,10 +131,12 @@ def require_api_key(f):
         return f(*args, **kwargs)
     return decorated_function
 
-@app.before_first_request
+@app.before_request
 def initialize():
-    """Initialize database on first request"""
-    init_db()
+    """Initialize database before each request (with check to avoid multiple inits)"""
+    if not hasattr(g, '_database_initialized'):
+        init_db()
+        g._database_initialized = True
 
 @app.teardown_appcontext
 def close_db_connection(exception):
