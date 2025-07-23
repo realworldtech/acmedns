@@ -69,9 +69,9 @@ MASTER_API_KEY=$MASTER_KEY
 # Public IP
 PUBLIC_IP=$PUBLIC_IP
 
-# Dashboard authentication (auto-generated)
-DASHBOARD_AUTH=admin:$DASHBOARD_HASH
-ADMIN_AUTH=admin:$ADMIN_HASH
+# Dashboard authentication (auto-generated - single quotes prevent variable expansion)
+DASHBOARD_AUTH='admin:$DASHBOARD_HASH'
+ADMIN_AUTH='admin:$ADMIN_HASH'
 EOF
 
 # Save passwords to file for reference
