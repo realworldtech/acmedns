@@ -280,12 +280,13 @@ def register():
         domain_hint = data.get('domain', 'unknown')
         client_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
         
-        # Forward to acme-dns
+        # Forward to acme-dns with empty JSON body (acme-dns expects this)
         response = requests.post(f"{ACME_DNS_URL}/register", 
-                               json={},
+                               json={},  # acme-dns expects empty object
                                timeout=10)
         
-        if response.status_code == 200:
+        # Check for success (200 or 201 are both valid)
+        if response.status_code in [200, 201]:
             registration_data = response.json()
             subdomain = registration_data.get('subdomain')
             
@@ -302,7 +303,7 @@ def register():
             
             return jsonify(registration_data), 200
         else:
-            app.logger.error(f"acme-dns registration failed: {response.status_code}")
+            app.logger.error(f"acme-dns registration failed: {response.status_code} - {response.text}")
             return jsonify({"error": "Registration failed"}), 500
             
     except Exception as e:
