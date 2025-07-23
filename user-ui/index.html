@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RWTS ACME DNS - Configuration Lookup</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+</head>
+<body class="bg-gray-100">
+    <div class="min-h-screen" x-data="lookupApp()">
+        <!-- Header -->
+        <header class="bg-green-600 text-white shadow-lg">
+            <div class="container mx-auto px-4 py-6">
+                <h1 class="text-3xl font-bold">RWTS ACME DNS</h1>
+                <p class="text-green-200">Configuration Lookup Service</p>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="container mx-auto px-4 py-8 max-w-2xl">
+            <!-- Lookup Form -->
+            <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+                <h2 class="text-xl font-semibold mb-4">Look Up Your ACME DNS Configuration</h2>
+                <p class="text-gray-600 mb-6">Enter your API key and domain to retrieve your ACME DNS setup instructions.</p>
+                
+                <form @submit.prevent="lookupConfig()" class="space-y-4">
+                    <div>
+                        <label for="apiKey" class="block text-sm font-medium text-gray-700 mb-2">API Key</label>
+                        <input type="password" id="apiKey" name="apiKey" required 
+                               x-model="form.apiKey"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" 
+                               placeholder="Enter your API key">
+                    </div>
+                    
+                    <div>
+                        <label for="domain" class="block text-sm font-medium text-gray-700 mb-2">Domain</label>
+                        <input type="text" id="domain" name="domain" required 
+                               x-model="form.domain"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" 
+                               placeholder="example.com">
+                    </div>
+                    
+                    <button type="submit" :disabled="loading"
+                            class="w-full bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50">
+                        <span x-show="!loading">Look Up Configuration</span>
+                        <span x-show="loading">Looking up...</span>
+                    </button>
+                </form>
+                
+                <div x-show="error" class="mt-4 p-4 bg-red-100 border border-red-300 rounded-lg">
+                    <p class="text-red-700" x-text="error"></p>
+                </div>
+            </div>
+
+            <!-- Results -->
+            <div x-show="config" class="bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-xl font-semibold mb-4 text-green-600">Configuration Found!</h2>
+                
+                <!-- CNAME Record -->
+                <div class="mb-6">
+                    <h3 class="text-lg font-medium mb-2">DNS CNAME Record</h3>
+                    <p class="text-sm text-gray-600 mb-3">Add this CNAME record to your DNS zone:</p>
+                    <div class="bg-gray-100 p-4 rounded-lg font-mono text-sm overflow-x-auto">
+                        <div class="grid grid-cols-3 gap-4">
+                            <div>
+                                <strong>Name:</strong><br>
+                                <span x-text="config?.cname_record?.name"></span>
+                            </div>
+                            <div>
+                                <strong>Type:</strong><br>
+                                <span x-text="config?.cname_record?.type"></span>
+                            </div>
+                            <div>
+                                <strong>Value:</strong><br>
+                                <span x-text="config?.cname_record?.value"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <button @click="copyToClipboard(config?.cname_record?.name + ' CNAME ' + config?.cname_record?.value)" 
+                            class="mt-2 text-sm bg-gray-200 hover:bg-gray-300 px-3 py-1 rounded">
+                        Copy DNS Record
+                    </button>
+                </div>
+
+                <!-- Configuration Details -->
+                <div class="mb-6">
+                    <h3 class="text-lg font-medium mb-2">ACME DNS Details</h3>
+                    <div class="bg-gray-50 p-4 rounded-lg">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                            <div>
+                                <strong>ACME DNS Server:</strong><br>
+                                <span x-text="config?.acme_dns_server"></span>
+                            </div>
+                            <div>
+                                <strong>Your Subdomain:</strong><br>
+                                <code class="bg-white px-2 py-1 rounded" x-text="config?.subdomain"></code>
+                            </div>
+                            <div>
+                                <strong>Domain:</strong><br>
+                                <span x-text="config?.domain"></span>
+                            </div>
+                            <div>
+                                <strong>Registered:</strong><br>
+                                <span x-text="config?.registration_info?.registered_at ? new Date(config.registration_info.registered_at).toLocaleDateString() : ''"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Setup Instructions -->
+                <div class="mb-6">
+                    <h3 class="text-lg font-medium mb-2">Setup Instructions</h3>
+                    <div class="space-y-3">
+                        <div class="flex items-start">
+                            <span class="bg-green-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold mr-3 mt-0.5">1</span>
+                            <p class="text-sm" x-text="config?.instructions?.step1"></p>
+                        </div>
+                        <div class="flex items-start">
+                            <span class="bg-green-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold mr-3 mt-0.5">2</span>
+                            <p class="text-sm" x-text="config?.instructions?.step2"></p>
+                        </div>
+                        <div class="flex items-start">
+                            <span class="bg-green-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold mr-3 mt-0.5">3</span>
+                            <p class="text-sm" x-text="config?.instructions?.step3"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Example Configuration -->
+                <div class="mb-6">
+                    <h3 class="text-lg font-medium mb-2">Example ACME Client Configuration</h3>
+                    <div class="bg-gray-900 text-green-400 p-4 rounded-lg font-mono text-sm overflow-x-auto">
+                        <div x-text="`# For certbot with acme-dns plugin:
+certbot certonly \\
+  --dns-acmedns \\
+  --dns-acmedns-credentials /path/to/acmedns.ini \\
+  -d ${config?.domain || 'your-domain.com'}
+
+# Contents of acmedns.ini:
+dns_acmedns_api_url = https://acmedns.realworld.net.au
+dns_acmedns_registration_file = /path/to/acmedns-registration.json`"></div>
+                    </div>
+                </div>
+
+                <button @click="reset()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg">
+                    Look Up Another Domain
+                </button>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="bg-gray-800 text-white py-8 mt-12">
+            <div class="container mx-auto px-4 text-center">
+                <p class="text-gray-400">RWTS ACME DNS Service</p>
+                <p class="text-sm text-gray-500 mt-2">Need an API key? Contact your administrator.</p>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        function lookupApp() {
+            return {
+                loading: false,
+                error: '',
+                config: null,
+                form: {
+                    apiKey: '',
+                    domain: ''
+                },
+
+                async lookupConfig() {
+                    this.loading = true;
+                    this.error = '';
+                    this.config = null;
+                    
+                    try {
+                        const response = await fetch('/api/lookup', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-API-Key': this.form.apiKey
+                            },
+                            body: JSON.stringify({
+                                domain: this.form.domain
+                            })
+                        });
+
+                        const data = await response.json();
+
+                        if (response.ok) {
+                            this.config = data;
+                        } else {
+                            this.error = data.error || 'Failed to look up configuration';
+                        }
+                    } catch (error) {
+                        this.error = 'Network error. Please try again.';
+                        console.error('Lookup error:', error);
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+
+                async copyToClipboard(text) {
+                    try {
+                        await navigator.clipboard.writeText(text);
+                        // Could add a toast notification here
+                        alert('Copied to clipboard!');
+                    } catch (error) {
+                        console.error('Failed to copy:', error);
+                        alert('Failed to copy to clipboard');
+                    }
+                },
+
+                reset() {
+                    this.config = null;
+                    this.error = '';
+                    this.form.apiKey = '';
+                    this.form.domain = '';
+                }
+            }
+        }
+    </script>
+</body>
+</html>
