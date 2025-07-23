@@ -1,0 +1,88 @@
+services:
+  traefik:
+    image: traefik:v3.0
+    container_name: traefik
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "53:53/udp"
+      - "53:53/tcp"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik/traefik.yml:/traefik.yml:ro
+      - ./traefik/dynamic:/dynamic:ro
+      - traefik-certs:/certs
+    environment:
+      # Remove Cloudflare env vars since we're using HTTP challenge
+      - TRAEFIK_LOG_LEVEL=INFO
+    labels:
+      - "traefik.enable=true"
+      # Dashboard (optional)
+      - "traefik.http.routers.dashboard.rule=Host(`traefik.acmedns.realworld.net.au`)"
+      - "traefik.http.routers.dashboard.tls=true"
+      - "traefik.http.routers.dashboard.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.dashboard.service=api@internal"
+      - "traefik.http.routers.dashboard.middlewares=dashboard-auth"
+      - "traefik.http.middlewares.dashboard-auth.basicauth.users=${DASHBOARD_AUTH}"
+
+  acme-dns:
+    image: joohoi/acme-dns:latest
+    container_name: acme-dns
+    restart: unless-stopped
+    volumes:
+      - ./acme-dns/config.cfg:/etc/acme-dns/config.cfg:ro
+      - acme-dns-data:/var/lib/acme-dns
+    labels:
+      - "traefik.enable=true"
+      # DNS (UDP)
+      - "traefik.udp.routers.acme-dns-udp.entrypoints=dns-udp"
+      - "traefik.udp.routers.acme-dns-udp.service=acme-dns-udp"
+      - "traefik.udp.services.acme-dns-udp.loadbalancer.server.port=53"
+      # DNS (TCP)
+      - "traefik.tcp.routers.acme-dns-tcp.rule=HostSNI(`*`)"
+      - "traefik.tcp.routers.acme-dns-tcp.entrypoints=dns-tcp"
+      - "traefik.tcp.routers.acme-dns-tcp.service=acme-dns-tcp"
+      - "traefik.tcp.services.acme-dns-tcp.loadbalancer.server.port=53"
+
+  registration-api:
+    build: ./registration-service
+    container_name: registration-api
+    restart: unless-stopped
+    environment:
+      - MASTER_API_KEY=${MASTER_API_KEY}
+    volumes:
+      - registration-data:/data
+    depends_on:
+      - acme-dns
+    labels:
+      - "traefik.enable=true"
+      # API endpoints
+      - "traefik.http.routers.registration-api.rule=Host(`acmedns.realworld.net.au`)"
+      - "traefik.http.routers.registration-api.tls=true"
+      - "traefik.http.routers.registration-api.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.registration-api.service=registration-api"
+      - "traefik.http.services.registration-api.loadbalancer.server.port=5000"
+
+  # Optional: Admin web interface
+  admin-ui:
+    image: nginx:alpine
+    container_name: admin-ui
+    restart: unless-stopped
+    volumes:
+      - ./admin-ui:/usr/share/nginx/html:ro
+      - ./nginx/admin.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - registration-api
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.admin-ui.rule=Host(`admin.acmedns.realworld.net.au`)"
+      - "traefik.http.routers.admin-ui.tls=true"
+      - "traefik.http.routers.admin-ui.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.admin-ui.middlewares=admin-auth"
+      - "traefik.http.middlewares.admin-auth.basicauth.users=${ADMIN_AUTH}"
+
+volumes:
+  traefik-certs:
+  acme-dns-data:
+  registration-data:
