@@ -16,7 +16,6 @@ services:
       - ./traefik/dynamic:/dynamic:ro
       - traefik-certs:/certs
     environment:
-      # Remove Cloudflare env vars since we're using HTTP challenge
       - TRAEFIK_LOG_LEVEL=INFO
     labels:
       - "traefik.enable=true"
@@ -66,7 +65,7 @@ services:
       - "traefik.http.routers.registration-api.service=registration-api"
       - "traefik.http.services.registration-api.loadbalancer.server.port=5000"
 
-  # Optional: Admin web interface
+  # Admin web interface
   admin-ui:
     image: nginx:alpine
     container_name: admin-ui

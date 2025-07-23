@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RWTS acme-dns Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js" defer></script>
+</head>
+<body class="bg-gray-100">
+    <div class="min-h-screen" x-data="adminApp()">
+        <!-- Header -->
+        <header class="bg-blue-600 text-white shadow-lg">
+            <div class="container mx-auto px-4 py-6">
+                <h1 class="text-3xl font-bold">RWTS acme-dns Admin</h1>
+                <p class="text-blue-200">API Key and Registration Management</p>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="container mx-auto px-4 py-8">
+            <!-- Stats Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <div class="bg-white rounded-lg shadow p-6">
+                    <h3 class="text-lg font-semibold text-gray-700">Total Keys</h3>
+                    <p class="text-3xl font-bold text-blue-600" x-text="stats.total_keys || '0'"></p>
+                </div>
+                <div class="bg-white rounded-lg shadow p-6">
+                    <h3 class="text-lg font-semibold text-gray-700">Active Keys</h3>
+                    <p class="text-3xl font-bold text-green-600" x-text="stats.active_keys || '0'"></p>
+                </div>
+                <div class="bg-white rounded-lg shadow p-6">
+                    <h3 class="text-lg font-semibold text-gray-700">Total Registrations</h3>
+                    <p class="text-3xl font-bold text-purple-600" x-text="stats.total_registrations || '0'"></p>
+                </div>
+                <div class="bg-white rounded-lg shadow p-6">
+                    <h3 class="text-lg font-semibold text-gray-700">Last 24h</h3>
+                    <p class="text-3xl font-bold text-orange-600" x-text="stats.registrations_last_24h || '0'"></p>
+                </div>
+            </div>
+
+            <!-- API Keys Section -->
+            <div class="bg-white rounded-lg shadow mb-8">
+                <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                    <h2 class="text-xl font-semibold">API Keys</h2>
+                    <button @click="showCreateForm = true" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                        Create New Key
+                    </button>
+                </div>
+                <div class="p-6">
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full">
+                            <thead>
+                                <tr class="border-b">
+                                    <th class="text-left py-2">Name</th>
+                                    <th class="text-left py-2">Organization</th>
+                                    <th class="text-left py-2">Usage</th>
+                                    <th class="text-left py-2">Status</th>
+                                    <th class="text-left py-2">Created</th>
+                                    <th class="text-left py-2">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template x-for="key in apiKeys" :key="key.key_id">
+                                    <tr class="border-b hover:bg-gray-50">
+                                        <td class="py-2" x-text="key.name"></td>
+                                        <td class="py-2" x-text="key.organization || '-'"></td>
+                                        <td class="py-2" x-text="key.usage_count"></td>
+                                        <td class="py-2">
+                                            <span :class="key.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'" 
+                                                  class="px-2 py-1 rounded-full text-xs font-medium" 
+                                                  x-text="key.is_active ? 'Active' : 'Revoked'">
+                                            </span>
+                                        </td>
+                                        <td class="py-2" x-text="new Date(key.created_at).toLocaleDateString()"></td>
+                                        <td class="py-2">
+                                            <button @click="revokeKey(key.key_id)" 
+                                                    x-show="key.is_active"
+                                                    class="text-red-600 hover:text-red-800 text-sm">
+                                                Revoke
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Registrations -->
+            <div class="bg-white rounded-lg shadow">
+                <div class="px-6 py-4 border-b border-gray-200">
+                    <h2 class="text-xl font-semibold">Recent Registrations</h2>
+                </div>
+                <div class="p-6">
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full">
+                            <thead>
+                                <tr class="border-b">
+                                    <th class="text-left py-2">Key Name</th>
+                                    <th class="text-left py-2">Domain</th>
+                                    <th class="text-left py-2">Client IP</th>
+                                    <th class="text-left py-2">Created</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template x-for="reg in registrations" :key="reg.id">
+                                    <tr class="border-b hover:bg-gray-50">
+                                        <td class="py-2" x-text="reg.key_name"></td>
+                                        <td class="py-2" x-text="reg.domain_hint || '-'"></td>
+                                        <td class="py-2" x-text="reg.client_ip"></td>
+                                        <td class="py-2" x-text="new Date(reg.created_at).toLocaleDateString()"></td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Create Key Modal -->
+        <div x-show="showCreateForm" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4" style="display: none;">
+            <div class="bg-white rounded-lg p-6 w-full max-w-md">
+                <h3 class="text-lg font-semibold mb-4">Create New API Key</h3>
+                <form @submit.prevent="createKey()">
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Name</label>
+                        <input type="text" x-model="newKey.name" required 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                        <input type="email" x-model="newKey.email" 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Organization</label>
+                        <input type="text" x-model="newKey.organization" 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Expires (days, optional)</label>
+                        <input type="number" x-model="newKey.expires_days" 
+                               class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div class="flex gap-2">
+                        <button type="submit" class="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700">
+                            Create Key
+                        </button>
+                        <button type="button" @click="showCreateForm = false" 
+                                class="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-400">
+                            Cancel
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Key Created Modal -->
+        <div x-show="createdKey" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4" style="display: none;">
+            <div class="bg-white rounded-lg p-6 w-full max-w-md">
+                <h3 class="text-lg font-semibold mb-4 text-green-600">API Key Created!</h3>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">API Key (save this!)</label>
+                    <input type="text" :value="createdKey.api_key" readonly 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 font-mono text-sm">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Key ID</label>
+                    <input type="text" :value="createdKey.key_id" readonly 
+                           class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50">
+                </div>
+                <p class="text-sm text-red-600 mb-4">⚠️ This API key will not be shown again. Save it securely!</p>
+                <button @click="createdKey = null; loadData()" 
+                        class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function adminApp() {
+            return {
+                stats: {},
+                apiKeys: [],
+                registrations: [],
+                showCreateForm: false,
+                createdKey: null,
+                newKey: {
+                    name: '',
+                    email: '',
+                    organization: '',
+                    expires_days: null
+                },
+
+                async init() {
+                    await this.loadData();
+                },
+
+                async loadData() {
+                    try {
+                        const [statsRes, keysRes, regsRes] = await Promise.all([
+                            fetch('/api/admin/stats'),
+                            fetch('/api/admin/keys'),
+                            fetch('/api/admin/registrations')
+                        ]);
+
+                        this.stats = await statsRes.json();
+                        this.apiKeys = await keysRes.json();
+                        this.registrations = await regsRes.json();
+                    } catch (error) {
+                        console.error('Failed to load data:', error);
+                        alert('Failed to load data. Please check authentication.');
+                    }
+                },
+
+                async createKey() {
+                    try {
+                        const response = await fetch('/api/admin/keys', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(this.newKey)
+                        });
+
+                        if (response.ok) {
+                            this.createdKey = await response.json();
+                            this.showCreateForm = false;
+                            this.newKey = { name: '', email: '', organization: '', expires_days: null };
+                        } else {
+                            alert('Failed to create API key');
+                        }
+                    } catch (error) {
+                        console.error('Failed to create key:', error);
+                        alert('Failed to create API key');
+                    }
+                },
+
+                async revokeKey(keyId) {
+                    if (!confirm('Are you sure you want to revoke this API key?')) {
+                        return;
+                    }
+
+                    try {
+                        const response = await fetch(`/api/admin/keys/${keyId}`, {
+                            method: 'DELETE'
+                        });
+
+                        if (response.ok) {
+                            await this.loadData();
+                        } else {
+                            alert('Failed to revoke API key');
+                        }
+                    } catch (error) {
+                        console.error('Failed to revoke key:', error);
+                        alert('Failed to revoke API key');
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+</html>
