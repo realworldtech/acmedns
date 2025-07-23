@@ -183,10 +183,16 @@
                                 <code class="bg-white px-2 py-1 rounded font-mono text-xs" x-text="config?.registration_info?.fulldomain"></code>
                             </div>
                         </div>
-                        <button @click="copyToClipboard(`Username: ${config?.registration_info?.username}\nPassword: ${config?.registration_info?.password}\nFull Domain: ${config?.registration_info?.fulldomain}`)" 
-                                class="mt-3 text-sm bg-amber-600 hover:bg-amber-700 text-white px-3 py-1 rounded">
-                            Copy All Credentials
-                        </button>
+                        <div class="mt-3 flex gap-2">
+                            <button @click="copyToClipboard(`Username: ${config?.registration_info?.username}\nPassword: ${config?.registration_info?.password}\nFull Domain: ${config?.registration_info?.fulldomain}`)" 
+                                    class="text-sm bg-amber-600 hover:bg-amber-700 text-white px-3 py-1 rounded">
+                                Copy All Credentials
+                            </button>
+                            <button @click="downloadRegistrationFile()" 
+                                    class="text-sm bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded">
+                                Download acmedns-registration.json
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -221,12 +227,20 @@ certbot certonly \\
 
 # Contents of acmedns.ini:
 dns_acmedns_api_url = https://acmedns.realworld.net.au
-dns_acmedns_registration_file = /path/to/acmedns-registration.json`"></pre>
+dns_acmedns_registration_file = /path/to/acmedns-registration.json
+
+# Note: Use the downloaded acmedns-registration.json file above!`"></pre>
                     </div>
-                    <button @click="copyToClipboard(`# For certbot with acme-dns plugin:\ncertbot certonly \\\\\n  --dns-acmedns \\\\\n  --dns-acmedns-credentials /path/to/acmedns.ini \\\\\n  -d ${config?.domain || 'your-domain.com'}\n\n# Contents of acmedns.ini:\ndns_acmedns_api_url = https://acmedns.realworld.net.au\ndns_acmedns_registration_file = /path/to/acmedns-registration.json`)" 
-                            class="mt-2 text-sm bg-gray-200 hover:bg-gray-300 px-3 py-1 rounded">
-                        Copy Configuration Example
-                    </button>
+                    <div class="mt-2 flex gap-2">
+                        <button @click="copyToClipboard(`# For certbot with acme-dns plugin:\ncertbot certonly \\\\\n  --dns-acmedns \\\\\n  --dns-acmedns-credentials /path/to/acmedns.ini \\\\\n  -d ${config?.domain || 'your-domain.com'}\n\n# Contents of acmedns.ini:\ndns_acmedns_api_url = https://acmedns.realworld.net.au\ndns_acmedns_registration_file = /path/to/acmedns-registration.json`)" 
+                                class="text-sm bg-gray-200 hover:bg-gray-300 px-3 py-1 rounded">
+                            Copy Configuration Example
+                        </button>
+                        <button @click="downloadAcmeIni()" 
+                                class="text-sm bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded">
+                            Download acmedns.ini
+                        </button>
+                    </div>
                 </div>
 
                 <button @click="reset()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg">
@@ -351,6 +365,62 @@ dns_acmedns_registration_file = /path/to/acmedns-registration.json`"></pre>
                         console.error('Failed to copy:', error);
                         alert('Failed to copy to clipboard');
                     }
+                },
+
+                downloadRegistrationFile() {
+                    if (!this.config?.registration_info) {
+                        alert('No registration data available');
+                        return;
+                    }
+
+                    const registrationData = {
+                        [this.config.domain]: {
+                            username: this.config.registration_info.username,
+                            password: this.config.registration_info.password,
+                            fulldomain: this.config.registration_info.fulldomain,
+                            subdomain: this.config.subdomain,
+                            allowfrom: []
+                        }
+                    };
+
+                    const jsonString = JSON.stringify(registrationData, null, 2);
+                    const blob = new Blob([jsonString], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'acmedns-registration.json';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                },
+
+                downloadAcmeIni() {
+                    if (!this.config?.domain) {
+                        alert('No configuration data available');
+                        return;
+                    }
+
+                    const iniContent = `# ACME DNS Configuration for ${this.config.domain}
+dns_acmedns_api_url = https://acmedns.realworld.net.au
+dns_acmedns_registration_file = /path/to/acmedns-registration.json
+
+# Make sure to:
+# 1. Download the acmedns-registration.json file
+# 2. Update the path above to point to the downloaded file
+# 3. Set proper file permissions (chmod 600)`;
+
+                    const blob = new Blob([iniContent], { type: 'text/plain' });
+                    const url = URL.createObjectURL(blob);
+                    
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'acmedns.ini';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
                 },
 
                 reset() {
