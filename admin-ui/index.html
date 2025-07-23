@@ -11,9 +11,16 @@
     <div class="min-h-screen" x-data="adminApp()">
         <!-- Header -->
         <header class="bg-blue-600 text-white shadow-lg">
-            <div class="container mx-auto px-4 py-6">
-                <h1 class="text-3xl font-bold">RWTS acme-dns Admin</h1>
-                <p class="text-blue-200">API Key and Registration Management</p>
+            <div class="container mx-auto px-4 py-6 flex justify-between items-center">
+                <div>
+                    <h1 class="text-3xl font-bold">RWTS acme-dns Admin</h1>
+                    <p class="text-blue-200">API Key and Registration Management</p>
+                </div>
+                <div x-show="getMasterKey()">
+                    <button @click="logout()" class="bg-blue-700 hover:bg-blue-800 px-4 py-2 rounded text-sm">
+                        Logout
+                    </button>
+                </div>
             </div>
         </header>
 
@@ -202,11 +209,26 @@
 
                 async loadData() {
                     try {
+                        const masterKey = this.getMasterKey();
+                        if (!masterKey) {
+                            this.promptForMasterKey();
+                            return;
+                        }
+
+                        const headers = {
+                            'Authorization': `Bearer ${masterKey}`
+                        };
+
                         const [statsRes, keysRes, regsRes] = await Promise.all([
-                            fetch('/api/admin/stats'),
-                            fetch('/api/admin/keys'),
-                            fetch('/api/admin/registrations')
+                            fetch('/api/admin/stats', { headers }),
+                            fetch('/api/admin/keys', { headers }),
+                            fetch('/api/admin/registrations', { headers })
                         ]);
+
+                        if (statsRes.status === 401 || keysRes.status === 401 || regsRes.status === 401) {
+                            this.promptForMasterKey();
+                            return;
+                        }
 
                         this.stats = await statsRes.json();
                         this.apiKeys = await keysRes.json();
@@ -219,13 +241,25 @@
 
                 async createKey() {
                     try {
+                        const masterKey = this.getMasterKey();
+                        if (!masterKey) {
+                            this.promptForMasterKey();
+                            return;
+                        }
+
                         const response = await fetch('/api/admin/keys', {
                             method: 'POST',
                             headers: {
-                                'Content-Type': 'application/json'
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${masterKey}`
                             },
                             body: JSON.stringify(this.newKey)
                         });
+
+                        if (response.status === 401) {
+                            this.promptForMasterKey();
+                            return;
+                        }
 
                         if (response.ok) {
                             this.createdKey = await response.json();
@@ -246,9 +280,23 @@
                     }
 
                     try {
+                        const masterKey = this.getMasterKey();
+                        if (!masterKey) {
+                            this.promptForMasterKey();
+                            return;
+                        }
+
                         const response = await fetch(`/api/admin/keys/${keyId}`, {
-                            method: 'DELETE'
+                            method: 'DELETE',
+                            headers: {
+                                'Authorization': `Bearer ${masterKey}`
+                            }
                         });
+
+                        if (response.status === 401) {
+                            this.promptForMasterKey();
+                            return;
+                        }
 
                         if (response.ok) {
                             await this.loadData();
@@ -259,6 +307,30 @@
                         console.error('Failed to revoke key:', error);
                         alert('Failed to revoke API key');
                     }
+                },
+
+                getMasterKey() {
+                    return sessionStorage.getItem('masterKey');
+                },
+
+                setMasterKey(key) {
+                    sessionStorage.setItem('masterKey', key);
+                },
+
+                promptForMasterKey() {
+                    const key = prompt('Enter master API key:');
+                    if (key) {
+                        this.setMasterKey(key);
+                        this.loadData();
+                    }
+                },
+
+                logout() {
+                    sessionStorage.removeItem('masterKey');
+                    this.stats = {};
+                    this.apiKeys = [];
+                    this.registrations = [];
+                    this.promptForMasterKey();
                 }
             }
         }
