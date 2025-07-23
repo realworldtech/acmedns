@@ -162,8 +162,10 @@
                                 <tr class="border-b">
                                     <th class="text-left py-2">Key Name</th>
                                     <th class="text-left py-2">Domain</th>
+                                    <th class="text-left py-2">Subdomain</th>
                                     <th class="text-left py-2">Client IP</th>
                                     <th class="text-left py-2">Created</th>
+                                    <th class="text-left py-2">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -171,8 +173,17 @@
                                     <tr class="border-b hover:bg-gray-50">
                                         <td class="py-2" x-text="reg.key_name"></td>
                                         <td class="py-2" x-text="reg.domain_hint || '-'"></td>
+                                        <td class="py-2">
+                                            <code class="text-xs bg-gray-100 px-2 py-1 rounded" x-text="reg.subdomain"></code>
+                                        </td>
                                         <td class="py-2" x-text="reg.client_ip"></td>
                                         <td class="py-2" x-text="new Date(reg.created_at).toLocaleDateString()"></td>
+                                        <td class="py-2">
+                                            <button @click="revokeRegistration(reg.id, reg.domain_hint)" 
+                                                    class="text-red-600 hover:text-red-800 text-sm">
+                                                Revoke
+                                            </button>
+                                        </td>
                                     </tr>
                                 </template>
                             </tbody>
@@ -404,6 +415,37 @@
                         username: this.loginForm.username,
                         password: this.loginForm.password
                     }));
+                },
+
+                async revokeRegistration(registrationId, domainHint) {
+                    const displayName = domainHint || `Registration #${registrationId}`;
+                    if (!confirm(`Are you sure you want to revoke the registration for "${displayName}"?`)) {
+                        return;
+                    }
+
+                    try {
+                        const response = await fetch(`/api/admin/registrations/${registrationId}`, {
+                            method: 'DELETE',
+                            headers: {
+                                'Authorization': `Bearer ${this.loginForm.password}`
+                            }
+                        });
+
+                        if (response.status === 401) {
+                            this.logout();
+                            return;
+                        }
+
+                        if (response.ok) {
+                            await this.loadData();
+                        } else {
+                            const error = await response.json();
+                            alert(`Failed to revoke registration: ${error.error || 'Unknown error'}`);
+                        }
+                    } catch (error) {
+                        console.error('Failed to revoke registration:', error);
+                        alert('Failed to revoke registration');
+                    }
                 },
 
                 logout() {

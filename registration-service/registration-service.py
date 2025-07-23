@@ -236,6 +236,35 @@ def list_registrations():
     
     return jsonify([dict(reg) for reg in registrations])
 
+@app.route('/admin/registrations/<int:registration_id>', methods=['DELETE'])
+@require_master_key
+def revoke_registration(registration_id):
+    """Revoke/delete a registration"""
+    db = get_db()
+    
+    # First check if registration exists
+    registration = db.execute('''
+        SELECT r.*, k.name as key_name 
+        FROM registrations r
+        JOIN api_keys k ON r.api_key_id = k.key_id
+        WHERE r.id = ?
+    ''', (registration_id,)).fetchone()
+    
+    if not registration:
+        return jsonify({"error": "Registration not found"}), 404
+    
+    # Delete the registration
+    result = db.execute('DELETE FROM registrations WHERE id = ?', (registration_id,))
+    db.commit()
+    
+    if result.rowcount == 0:
+        return jsonify({"error": "Registration not found"}), 404
+    
+    app.logger.info(f"Revoked registration: id={registration_id}, key={registration['key_name']}, "
+                  f"domain={registration['domain_hint']}, subdomain={registration['subdomain']}")
+    
+    return jsonify({"message": "Registration revoked successfully"})
+
 @app.route('/admin/stats', methods=['GET'])
 @require_master_key
 def get_stats():
