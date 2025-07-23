@@ -213,7 +213,7 @@
                 <div class="mb-6">
                     <h3 class="text-lg font-medium mb-2">Example ACME Client Configuration</h3>
                     <div class="bg-gray-900 text-green-400 p-4 rounded-lg font-mono text-sm overflow-x-auto">
-                        <div x-text="`# For certbot with acme-dns plugin:
+                        <pre x-text="`# For certbot with acme-dns plugin:
 certbot certonly \\
   --dns-acmedns \\
   --dns-acmedns-credentials /path/to/acmedns.ini \\
@@ -221,8 +221,12 @@ certbot certonly \\
 
 # Contents of acmedns.ini:
 dns_acmedns_api_url = https://acmedns.realworld.net.au
-dns_acmedns_registration_file = /path/to/acmedns-registration.json`"></div>
+dns_acmedns_registration_file = /path/to/acmedns-registration.json`"></pre>
                     </div>
+                    <button @click="copyToClipboard(`# For certbot with acme-dns plugin:\ncertbot certonly \\\\\n  --dns-acmedns \\\\\n  --dns-acmedns-credentials /path/to/acmedns.ini \\\\\n  -d ${config?.domain || 'your-domain.com'}\n\n# Contents of acmedns.ini:\ndns_acmedns_api_url = https://acmedns.realworld.net.au\ndns_acmedns_registration_file = /path/to/acmedns-registration.json`)" 
+                            class="mt-2 text-sm bg-gray-200 hover:bg-gray-300 px-3 py-1 rounded">
+                        Copy Configuration Example
+                    </button>
                 </div>
 
                 <button @click="reset()" class="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg">
