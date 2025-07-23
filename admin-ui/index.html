@@ -9,23 +9,78 @@
 </head>
 <body class="bg-gray-100">
     <div class="min-h-screen" x-data="adminApp()">
-        <!-- Header -->
-        <header class="bg-blue-600 text-white shadow-lg">
-            <div class="container mx-auto px-4 py-6 flex justify-between items-center">
+        <!-- Login Form -->
+        <div x-show="!isLoggedIn" class="min-h-screen flex items-center justify-center bg-gray-50">
+            <div class="max-w-md w-full space-y-8 p-8">
                 <div>
-                    <h1 class="text-3xl font-bold">RWTS acme-dns Admin</h1>
-                    <p class="text-blue-200">API Key and Registration Management</p>
+                    <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
+                        RWTS acme-dns Admin
+                    </h2>
+                    <p class="mt-2 text-center text-sm text-gray-600">
+                        Sign in to manage API keys
+                    </p>
                 </div>
-                <div x-show="getMasterKey()">
-                    <button @click="logout()" class="bg-blue-700 hover:bg-blue-800 px-4 py-2 rounded text-sm">
-                        Logout
-                    </button>
-                </div>
-            </div>
-        </header>
+                <form @submit.prevent="login()" class="mt-8 space-y-6">
+                    <div class="rounded-md shadow-sm -space-y-px">
+                        <div>
+                            <label for="username" class="sr-only">Username</label>
+                            <input id="username" name="username" type="text" autocomplete="username" required 
+                                   x-model="loginForm.username"
+                                   class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm" 
+                                   placeholder="Username">
+                        </div>
+                        <div>
+                            <label for="password" class="sr-only">Master API Key</label>
+                            <input id="password" name="password" type="password" autocomplete="current-password" required 
+                                   x-model="loginForm.password"
+                                   class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm" 
+                                   placeholder="Master API Key">
+                        </div>
+                    </div>
 
-        <!-- Main Content -->
-        <main class="container mx-auto px-4 py-8">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center">
+                            <input id="remember-me" name="remember-me" type="checkbox" x-model="loginForm.remember"
+                                   class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded">
+                            <label for="remember-me" class="ml-2 block text-sm text-gray-900">
+                                Remember me
+                            </label>
+                        </div>
+                    </div>
+
+                    <div>
+                        <button type="submit" :disabled="loading"
+                                class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50">
+                            <span x-show="!loading">Sign in</span>
+                            <span x-show="loading">Signing in...</span>
+                        </button>
+                    </div>
+                    
+                    <div x-show="loginError" class="text-red-600 text-sm text-center" x-text="loginError"></div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Main App (shown when logged in) -->
+        <div x-show="isLoggedIn">
+            <!-- Header -->
+            <header class="bg-blue-600 text-white shadow-lg">
+                <div class="container mx-auto px-4 py-6 flex justify-between items-center">
+                    <div>
+                        <h1 class="text-3xl font-bold">RWTS acme-dns Admin</h1>
+                        <p class="text-blue-200">API Key and Registration Management</p>
+                    </div>
+                    <div>
+                        <span class="text-blue-200 mr-4">Welcome, <span x-text="loginForm.username"></span></span>
+                        <button @click="logout()" class="bg-blue-700 hover:bg-blue-800 px-4 py-2 rounded text-sm">
+                            Logout
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Main Content -->
+            <main class="container mx-auto px-4 py-8">
             <!-- Stats Cards -->
             <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
                 <div class="bg-white rounded-lg shadow p-6">
@@ -125,7 +180,8 @@
                     </div>
                 </div>
             </div>
-        </main>
+            </main>
+        </div>
 
         <!-- Create Key Modal -->
         <div x-show="showCreateForm" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4" style="display: none;">
@@ -191,6 +247,14 @@
     <script>
         function adminApp() {
             return {
+                isLoggedIn: false,
+                loading: false,
+                loginError: '',
+                loginForm: {
+                    username: '',
+                    password: '',
+                    remember: false
+                },
                 stats: {},
                 apiKeys: [],
                 registrations: [],
@@ -204,19 +268,52 @@
                 },
 
                 async init() {
-                    await this.loadData();
+                    // Check if user is already logged in
+                    const stored = this.getStoredAuth();
+                    if (stored) {
+                        this.loginForm.username = stored.username;
+                        this.loginForm.password = stored.password;
+                        this.isLoggedIn = true;
+                        await this.loadData();
+                    }
+                },
+
+                async login() {
+                    this.loading = true;
+                    this.loginError = '';
+                    
+                    try {
+                        // Test the master key by making an API call
+                        const response = await fetch('/api/admin/stats', {
+                            headers: {
+                                'Authorization': `Bearer ${this.loginForm.password}`
+                            }
+                        });
+
+                        if (response.ok) {
+                            this.isLoggedIn = true;
+                            
+                            // Store credentials if remember is checked
+                            if (this.loginForm.remember) {
+                                this.storeAuth();
+                            }
+                            
+                            await this.loadData();
+                        } else {
+                            this.loginError = 'Invalid credentials. Please check your master API key.';
+                        }
+                    } catch (error) {
+                        this.loginError = 'Login failed. Please try again.';
+                        console.error('Login error:', error);
+                    } finally {
+                        this.loading = false;
+                    }
                 },
 
                 async loadData() {
                     try {
-                        const masterKey = this.getMasterKey();
-                        if (!masterKey) {
-                            this.promptForMasterKey();
-                            return;
-                        }
-
                         const headers = {
-                            'Authorization': `Bearer ${masterKey}`
+                            'Authorization': `Bearer ${this.loginForm.password}`
                         };
 
                         const [statsRes, keysRes, regsRes] = await Promise.all([
@@ -226,7 +323,7 @@
                         ]);
 
                         if (statsRes.status === 401 || keysRes.status === 401 || regsRes.status === 401) {
-                            this.promptForMasterKey();
+                            this.logout();
                             return;
                         }
 
@@ -235,29 +332,23 @@
                         this.registrations = await regsRes.json();
                     } catch (error) {
                         console.error('Failed to load data:', error);
-                        alert('Failed to load data. Please check authentication.');
+                        alert('Failed to load data. Please try again.');
                     }
                 },
 
                 async createKey() {
                     try {
-                        const masterKey = this.getMasterKey();
-                        if (!masterKey) {
-                            this.promptForMasterKey();
-                            return;
-                        }
-
                         const response = await fetch('/api/admin/keys', {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
-                                'Authorization': `Bearer ${masterKey}`
+                                'Authorization': `Bearer ${this.loginForm.password}`
                             },
                             body: JSON.stringify(this.newKey)
                         });
 
                         if (response.status === 401) {
-                            this.promptForMasterKey();
+                            this.logout();
                             return;
                         }
 
@@ -280,21 +371,15 @@
                     }
 
                     try {
-                        const masterKey = this.getMasterKey();
-                        if (!masterKey) {
-                            this.promptForMasterKey();
-                            return;
-                        }
-
                         const response = await fetch(`/api/admin/keys/${keyId}`, {
                             method: 'DELETE',
                             headers: {
-                                'Authorization': `Bearer ${masterKey}`
+                                'Authorization': `Bearer ${this.loginForm.password}`
                             }
                         });
 
                         if (response.status === 401) {
-                            this.promptForMasterKey();
+                            this.logout();
                             return;
                         }
 
@@ -309,28 +394,25 @@
                     }
                 },
 
-                getMasterKey() {
-                    return sessionStorage.getItem('masterKey');
+                getStoredAuth() {
+                    const stored = localStorage.getItem('adminAuth');
+                    return stored ? JSON.parse(stored) : null;
                 },
 
-                setMasterKey(key) {
-                    sessionStorage.setItem('masterKey', key);
-                },
-
-                promptForMasterKey() {
-                    const key = prompt('Enter master API key:');
-                    if (key) {
-                        this.setMasterKey(key);
-                        this.loadData();
-                    }
+                storeAuth() {
+                    localStorage.setItem('adminAuth', JSON.stringify({
+                        username: this.loginForm.username,
+                        password: this.loginForm.password
+                    }));
                 },
 
                 logout() {
-                    sessionStorage.removeItem('masterKey');
+                    localStorage.removeItem('adminAuth');
+                    this.isLoggedIn = false;
+                    this.loginForm = { username: '', password: '', remember: false };
                     this.stats = {};
                     this.apiKeys = [];
                     this.registrations = [];
-                    this.promptForMasterKey();
                 }
             }
         }
