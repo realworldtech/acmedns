@@ -56,12 +56,14 @@ services:
       - acme-dns
     labels:
       - "traefik.enable=true"
-      # API endpoints
-      - "traefik.http.routers.registration-api.rule=Host(`acmedns.realworld.net.au`)"
+      # API endpoints - only handle /api/* paths
+      - "traefik.http.routers.registration-api.rule=Host(`acmedns.realworld.net.au`) && PathPrefix(`/api/`)"
       - "traefik.http.routers.registration-api.tls=true"
       - "traefik.http.routers.registration-api.tls.certresolver=letsencrypt"
       - "traefik.http.routers.registration-api.service=registration-api"
       - "traefik.http.services.registration-api.loadbalancer.server.port=5000"
+      - "traefik.http.routers.registration-api.middlewares=registration-api-stripprefix"
+      - "traefik.http.middlewares.registration-api-stripprefix.stripprefix.prefixes=/api"
 
   # Admin web interface
   admin-ui:
