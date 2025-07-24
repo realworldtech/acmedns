@@ -6,6 +6,7 @@ import secrets
 import sqlite3
 import hashlib
 import requests
+import re
 from datetime import datetime, timedelta
 from flask import Flask, request, jsonify, g
 from functools import wraps
@@ -70,6 +71,47 @@ def hash_key(key):
     """Hash an API key for storage"""
     return hashlib.sha256(key.encode()).hexdigest()
 
+def escape_like_pattern(pattern):
+    """Escape special characters in LIKE patterns to prevent injection"""
+    # Escape SQLite LIKE special characters
+    return pattern.replace('%', '\\%').replace('_', '\\_').replace('\\', '\\\\')
+
+def validate_domain(domain):
+    """Validate domain name format"""
+    if not domain or len(domain) > 253:
+        return False
+    
+    # Basic domain regex - allows valid domain characters
+    domain_pattern = re.compile(
+        r'^(?!-)[A-Za-z0-9-]{1,63}(?<!-)(\.[A-Za-z0-9-]{1,63})*$'
+    )
+    return bool(domain_pattern.match(domain))
+
+def validate_email(email):
+    """Basic email validation"""
+    if not email:
+        return True  # Email is optional
+    
+    if len(email) > 254:
+        return False
+    
+    # Basic email pattern
+    email_pattern = re.compile(r'^[^@]+@[^@]+\.[^@]+$')
+    return bool(email_pattern.match(email))
+
+def sanitize_string(value, max_length=255):
+    """Sanitize string input"""
+    if not value:
+        return ""
+    
+    # Strip whitespace and limit length
+    sanitized = str(value).strip()[:max_length]
+    
+    # Remove control characters
+    sanitized = ''.join(char for char in sanitized if ord(char) >= 32 or char in '\t\n\r')
+    
+    return sanitized
+
 def generate_api_key():
     """Generate a new API key"""
     return f"acmedns_{secrets.token_urlsafe(32)}"
@@ -83,8 +125,8 @@ def require_master_key(f):
             return jsonify({"error": "Missing or invalid authorization header"}), 401
         
         provided_key = auth_header[7:]  # Remove 'Bearer ' prefix
-        if provided_key != MASTER_KEY:
-            return jsonify({"error": "Invalid master key"}), 401
+        if not secrets.compare_digest(provided_key, MASTER_KEY):
+            return jsonify({"error": "Invalid credentials"}), 401
         
         return f(*args, **kwargs)
     return decorated_function
@@ -108,13 +150,16 @@ def require_api_key(f):
         ''', (key_hash,)).fetchone()
         
         if not key_record:
-            return jsonify({"error": "Invalid API key"}), 401
+            return jsonify({"error": "Invalid credentials"}), 401
         
         # Check expiration
         if key_record['expires_at']:
-            expires_at = datetime.fromisoformat(key_record['expires_at'])
-            if datetime.utcnow() > expires_at:
-                return jsonify({"error": "API key has expired"}), 401
+            try:
+                expires_at = datetime.fromisoformat(key_record['expires_at'])
+                if datetime.utcnow() > expires_at:
+                    return jsonify({"error": "Invalid credentials"}), 401
+            except ValueError:
+                return jsonify({"error": "Invalid credentials"}), 401
         
         # Update usage statistics
         db.execute('''
@@ -149,15 +194,29 @@ def close_db_connection(exception):
 @require_master_key
 def create_api_key():
     """Create a new API key"""
-    data = request.get_json() or {}
-    
-    name = data.get('name', '').strip()
-    email = data.get('email', '').strip()
-    organization = data.get('organization', '').strip()
-    expires_days = data.get('expires_days')
-    
-    if not name:
-        return jsonify({"error": "Name is required"}), 400
+    try:
+        data = request.get_json() or {}
+        
+        # Sanitize and validate inputs
+        name = sanitize_string(data.get('name', ''), 100)
+        email = sanitize_string(data.get('email', ''), 254)
+        organization = sanitize_string(data.get('organization', ''), 100)
+        expires_days = data.get('expires_days')
+        
+        # Validation
+        if not name:
+            return jsonify({"error": "Name is required"}), 400
+        
+        if email and not validate_email(email):
+            return jsonify({"error": "Invalid email format"}), 400
+        
+        if expires_days is not None:
+            try:
+                expires_days = int(expires_days)
+                if expires_days <= 0 or expires_days > 3650:  # Max 10 years
+                    return jsonify({"error": "Expiration days must be between 1 and 3650"}), 400
+            except (ValueError, TypeError):
+                return jsonify({"error": "Invalid expiration days"}), 400
     
     # Generate new key
     api_key = generate_api_key()
@@ -189,7 +248,11 @@ def create_api_key():
         }), 201
         
     except sqlite3.IntegrityError:
+        app.logger.error(f"Database integrity error creating API key for {name}")
         return jsonify({"error": "Key generation failed, please try again"}), 500
+    except Exception as e:
+        app.logger.error(f"Unexpected error creating API key: {e}")
+        return jsonify({"error": "Internal server error"}), 500
 
 @app.route('/admin/keys', methods=['GET'])
 @require_master_key
@@ -306,8 +369,12 @@ def register():
     """Register a new domain with acme-dns"""
     try:
         data = request.get_json() or {}
-        domain_hint = data.get('domain', 'unknown')
+        domain_hint = sanitize_string(data.get('domain', 'unknown'), 253)
         client_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+        
+        # Validate domain if provided
+        if domain_hint != 'unknown' and not validate_domain(domain_hint):
+            return jsonify({"error": "Invalid domain format"}), 400
         
         # Forward to acme-dns with empty JSON body (acme-dns expects this)
         response = requests.post(f"{ACME_DNS_URL}/register", 
@@ -335,6 +402,9 @@ def register():
             app.logger.error(f"acme-dns registration failed: {response.status_code} - {response.text}")
             return jsonify({"error": "Registration failed"}), 500
             
+    except requests.RequestException as e:
+        app.logger.error(f"ACME DNS service error: {e}")
+        return jsonify({"error": "External service unavailable"}), 503
     except Exception as e:
         app.logger.error(f"Registration error: {e}")
         return jsonify({"error": "Internal server error"}), 500
@@ -358,9 +428,10 @@ def health():
         }), 200
         
     except Exception as e:
+        app.logger.error(f"Health check error: {e}")
         return jsonify({
             "status": "unhealthy",
-            "error": str(e)
+            "error": "Service check failed"
         }), 500
 
 @app.route('/info', methods=['GET'])
@@ -390,22 +461,27 @@ def get_key_info():
 @require_api_key
 def lookup_config():
     """Look up ACME DNS configuration for a domain"""
-    data = request.get_json() or {}
-    domain = data.get('domain', '').strip()
-    
-    if not domain:
-        return jsonify({"error": "Domain is required"}), 400
+    try:
+        data = request.get_json() or {}
+        domain = sanitize_string(data.get('domain', ''))
+        
+        if not domain:
+            return jsonify({"error": "Domain is required"}), 400
+        
+        if not validate_domain(domain):
+            return jsonify({"error": "Invalid domain format"}), 400
     
     db = get_db()
     
     # Find registrations for this API key and domain
+    escaped_domain = escape_like_pattern(domain)
     registrations = db.execute('''
         SELECT r.*, k.name as key_name
         FROM registrations r
         JOIN api_keys k ON r.api_key_id = k.key_id
-        WHERE r.api_key_id = ? AND (r.domain_hint = ? OR r.domain_hint LIKE ?)
+        WHERE r.api_key_id = ? AND (r.domain_hint = ? OR r.domain_hint LIKE ? ESCAPE '\\')
         ORDER BY r.created_at DESC
-    ''', (g.api_key_id, domain, f'%{domain}%')).fetchall()
+    ''', (g.api_key_id, domain, f'%{escaped_domain}%')).fetchall()
     
     if not registrations:
         return jsonify({
@@ -439,9 +515,13 @@ def lookup_config():
         }
     }
     
-    app.logger.info(f"Config lookup: key={g.api_key_name}, domain={domain}, subdomain={latest_reg['subdomain']}")
+        app.logger.info(f"Config lookup: key={g.api_key_name}, domain={domain}, subdomain={latest_reg['subdomain']}")
+        
+        return jsonify(config)
     
-    return jsonify(config)
+    except Exception as e:
+        app.logger.error(f"Error in lookup_config: {e}")
+        return jsonify({"error": "Internal server error"}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=False)
