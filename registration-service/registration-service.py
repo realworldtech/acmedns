@@ -523,5 +523,5 @@ def lookup_config():
         app.logger.error(f"Error in lookup_config: {e}")
         return jsonify({"error": "Internal server error"}), 500
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=False)
+# Application factory pattern for WSGI deployment
+# Use gunicorn to run this application in production
