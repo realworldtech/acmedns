@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RWTS ACME DNS - Admin Documentation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100">
+    <!-- Header -->
+    <header class="bg-red-600 text-white shadow-lg">
+        <div class="container mx-auto px-4 py-6">
+            <div class="flex justify-between items-center">
+                <div>
+                    <h1 class="text-3xl font-bold">RWTS ACME DNS Admin Documentation</h1>
+                    <p class="text-red-200">Administrative interface guide</p>
+                </div>
+                <nav class="space-x-4">
+                    <a href="/admin/" class="bg-red-700 hover:bg-red-800 px-4 py-2 rounded">← Back to Admin</a>
+                </nav>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 py-8 max-w-4xl">
+        <!-- Table of Contents -->
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
+            <h2 class="text-2xl font-bold mb-4">Table of Contents</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <h3 class="font-semibold text-lg mb-2">Authentication</h3>
+                    <ul class="space-y-1 text-blue-600">
+                        <li><a href="#login" class="hover:underline">Admin Login</a></li>
+                        <li><a href="#security" class="hover:underline">Security Features</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="font-semibold text-lg mb-2">API Key Management</h3>
+                    <ul class="space-y-1 text-blue-600">
+                        <li><a href="#create-keys" class="hover:underline">Creating API Keys</a></li>
+                        <li><a href="#manage-keys" class="hover:underline">Managing Keys</a></li>
+                        <li><a href="#revoke-keys" class="hover:underline">Revoking Keys</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="font-semibold text-lg mb-2">Registration Management</h3>
+                    <ul class="space-y-1 text-blue-600">
+                        <li><a href="#view-registrations" class="hover:underline">View Registrations</a></li>
+                        <li><a href="#revoke-registrations" class="hover:underline">Revoke Registrations</a></li>
+                        <li><a href="#search-filter" class="hover:underline">Search & Filter</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="font-semibold text-lg mb-2">Monitoring</h3>
+                    <ul class="space-y-1 text-blue-600">
+                        <li><a href="#dashboard" class="hover:underline">Dashboard Stats</a></li>
+                        <li><a href="#api-reference" class="hover:underline">API Reference</a></li>
+                        <li><a href="#troubleshooting" class="hover:underline">Troubleshooting</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Login Section -->
+        <section id="login" class="bg-white rounded-lg shadow-lg p-6 mb-8">
+            <h2 class="text-2xl font-bold mb-4">Admin Login</h2>
+            <div class="prose max-w-none">
+                <p class="mb-4">The admin interface requires authentication with the master API key. This key provides full administrative access to the service.</p>
+                
+                <h3 class="text-lg font-semibold mb-3">Login Process</h3>
+                <ol class="list-decimal pl-6 mb-4">
+                    <li>Navigate to the admin interface</li>
+                    <li>Enter your username (can be any identifier)</li>
+                    <li>Enter the master API key as the password</li>
+                    <li>Check "Remember me" to store credentials in your browser</li>
+                    <li>Click "Login" to authenticate</li>
+                </ol>
+                
+                <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mt-6">
+                    <p class="text-yellow-800"><strong>Security:</strong> The master API key provides complete administrative access. Store it securely and only share with authorized administrators.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Security Section -->
+        <section id="security" class="bg-white rounded-lg shadow-lg p-6 mb-8">
+            <h2 class="text-2xl font-bold mb-4">Security Features</h2>
+            <div class="prose max-w-none">
+                <h3 class="text-lg font-semibold mb-3">Authentication</h3>
+                <ul class="list-disc pl-6 mb-4">
+                    <li><strong>Master Key Authentication</strong> - All admin operations require the master API key</li>
+                    <li><strong>Session Storage</strong> - Credentials stored in browser session storage (cleared on close)</li>
+                    <li><strong>Auto-logout</strong> - Sessions expire when browser is closed</li>
+                    <li><strong>Rate Limiting</strong> - API endpoints have strict rate limits to prevent abuse</li>
+                </ul>
+                
+                <h3 class="text-lg font-semibold mb-3 mt-6">Best Practices</h3>
+                <ul class="list-disc pl-6 mb-4">
+                    <li><strong>Use dedicated admin browsers</strong> - Don't mix admin and regular browsing</li>
+                    <li><strong>Log out when finished</strong> - Close browser tabs when done</li>
+                    <li><strong>Monitor access logs</strong> - Review admin activity regularly</li>
+                    <li><strong>Rotate master key periodically</strong> - Update master key on schedule</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- Create Keys Section -->
+        <section id="create-keys" class="bg-white rounded-lg shadow-lg p-6 mb-8">
+            <h2 class="text-2xl font-bold mb-4">Creating API Keys</h2>
+            <div class="prose max-w-none">
+                <p class="mb-4">API keys allow users to register domains and manage certificates. Each key should be associated with a specific user or system.</p>
+                
+                <h3 class="text-lg font-semibold mb-3">Key Creation Process</h3>
+                <ol class="list-decimal pl-6 mb-4">
+                    <li>Click "Create New API Key" in the admin interface</li>
+                    <li>Fill in the required information:
+                        <ul class="list-disc pl-6 mt-2">
+                            <li><strong>Name</strong> - Descriptive name for the key holder</li>
+                            <li><strong>Email</strong> - Contact email (optional)</li>
+                            <li><strong>Organization</strong> - Organization or department (optional)</li>
+                            <li><strong>Expires Days</strong> - Key expiration in days (optional, max 3650)</li>
+                        </ul>
+                    </li>
+                    <li>Click "Create Key" to generate the API key</li>
+                    <li>Copy the generated key immediately - it won't be shown again</li>
+                    <li>Securely share the key with the intended user</li>
+                </ol>
+                
+                <h3 class="text-lg font-semibold mb-3 mt-6">Key Properties</h3>
+                <ul class="list-disc pl-6 mb-4">
+                    <li><strong>Unique Identifier</strong> - Each key has a unique key_id for tracking</li>
+                    <li><strong>One-time Display</strong> - The actual key is only shown once during creation</li>
+                    <li><strong>Usage Tracking</strong> - All key usage is logged and tracked</li>
+                    <li><strong>Expiration Support</strong> - Keys can have optional expiration dates</li>
+                </ul>
+                
+                <div class="bg-red-50 border-l-4 border-red-400 p-4 mt-6">
+                    <p class="text-red-800"><strong>Important:</strong> API keys are displayed only once during creation. Make sure to copy and securely store the key before closing the dialog.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Manage Keys Section -->
+        <section id="manage-keys" class="bg-white rounded-lg shadow-lg p-6 mb-8">
+            <h2 class="text-2xl font-bold mb-4">Managing API Keys</h2>
+            <div class="prose max-w-none">
+                <p class="mb-4">The API Keys tab shows all created keys with their status and usage information.</p>
+                
+                <h3 class="text-lg font-semibold mb-3">Key Information Displayed</h3>
+                <ul class="list-disc pl-6 mb-4">
+                    <li><strong>Key ID</strong> - Unique identifier for the key</li>
+                    <li><strong>Name</strong> - Descriptive name you provided</li>
+                    <li><strong>Email & Organization</strong> - Contact information</li>
+                    <li><strong>Created</strong> - When the key was created</li>
+                    <li><strong>Expires</strong> - Expiration date (if set)</li>
+                    <li><strong>Status</strong> - Active or revoked status</li>
+                    <li><strong>Usage Count</strong> - Total API calls made with this key</li>
+                    <li><strong>Last Used</strong> - When the key was last used</li>
+                </ul>
+                
+                <h3 class="text-lg font-semibold mb-3 mt-6">Key Status Indicators</h3>
+                <div class="space-y-3">
+                    <div class="flex items-center">
+                        <span class="bg-green-100 text-green-800 px-2 py-1 rounded text-sm font-medium mr-3">Active</span>
+                        <span>Key is valid and can be used</span>
+                    </div>
+                    <div class="flex items-center">
+                        <span class="bg-red-100 text-red-800 px-2 py-1 rounded text-sm font-medium mr-3">Revoked</span>
+                        <span>Key has been disabled and cannot be used</span>
+                    </div>
+                    <div class="flex items-center">
+                        <span class="bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-sm font-medium mr-3">Expired</span>
+                        <span>Key has passed its expiration date</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Revoke Keys Section -->
+        <section id="revoke-keys" class="bg-white rounded-lg shadow-lg p-6 mb-8">
+            <h2 class="text-2xl font-bold mb-4">Revoking API Keys</h2>
+            <div class="prose max-w-none">
+                <p class="mb-4">Revoking an API key immediately disables it and prevents any further use. This action cannot be undone.</p>
+                
+                <h3 class="text-lg font-semibold mb-3">When to Revoke Keys</h3>
+                <ul class="list-disc pl-6 mb-4">
+                    <li><strong>Employee departure</strong> - When someone leaves the organization</li>
+                    <li><strong>Security compromise</strong> - If a key is suspected to be compromised</li>
+                    <li><strong>Project completion</strong> - When a temporary project no longer needs access</li>
+                    <li><strong>Policy violation</strong> - If key usage violates policies</li>
+                </ul>
+                
+                <h3 class="text-lg font-semibold mb-3 mt-6">Revocation Process</h3>
+                <ol class="list-decimal pl-6 mb-4">
+                    <li>Find the key in the API Keys list</li>
+                    <li>Click the "Revoke" button for the key</li>
+                    <li>Confirm the revocation in the dialog</li>
+                    <li>The key status will immediately change to "Revoked"</li>
+                    <li>All future API calls with this key will be rejected</li>
+                </ol>
+                
+                <div class="bg-red-50 border-l-4 border-red-400 p-4 mt-6">
+                    <p class="text-red-800"><strong>Warning:</strong> Key revocation is immediate and permanent. Revoked keys cannot be reactivated. The user will need a new key to continue using the service.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- View Registrations Section -->
+        <section id="view-registrations" class="bg-white rounded-lg shadow-lg p-6 mb-8">
+            <h2 class="text-2xl font-bold mb-4">View Registrations</h2>
+            <div class="prose max-w-none">
+                <p class="mb-4">The Registrations tab shows all domain registrations made through the service, providing visibility into system usage.</p>
+                
+                <h3 class="text-lg font-semibold mb-3">Registration Information</h3>
+                <ul class="list-disc pl-6 mb-4">
+                    <li><strong>ID</strong> - Unique registration identifier</li>
+                    <li><strong>Domain Hint</strong> - The domain name provided during registration</li>
+                    <li><strong>Subdomain</strong> - The unique subdomain assigned by acme-dns</li>
+                    <li><strong>Key Name</strong> - Which API key made this registration</li>
+                    <li><strong>Organization</strong> - The organization associated with the key</li>
+                    <li><strong>Client IP</strong> - IP address of the registration request</li>
+                    <li><strong>Created</strong> - When the registration was made</li>
+                </ul>
+                
+                <h3 class="text-lg font-semibold mb-3 mt-6">Registration List Features</h3>
+                <ul class="list-disc pl-6 mb-4">
+                    <li><strong>Sorting</strong> - Click column headers to sort (newest first by default)</li>
+                    <li><strong>Pagination</strong> - Shows most recent 100 registrations</li>
+                    <li><strong>Quick Actions</strong> - Revoke button for each registration</li>
+                    <li><strong>Real-time Updates</strong> - Refresh to see new registrations</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- Revoke Registrations Section -->
+        <section id="revoke-registrations" class="bg-white rounded-lg shadow-lg p-6 mb-8">
+            <h2 class="text-2xl font-bold mb-4">Revoke Registrations</h2>
+            <div class="prose max-w-none">
+                <p class="mb-4">Revoking a registration removes it from the system and prevents future certificate requests for that domain configuration.</p>
+                
+                <h3 class="text-lg font-semibold mb-3">When to Revoke Registrations</h3>
+                <ul class="list-disc pl-6 mb-4">
+                    <li><strong>Domain no longer owned</strong> - When organization no longer controls the domain</li>
+                    <li><strong>Security incident</strong> - If registration credentials may be compromised</li>
+                    <li><strong>Policy violation</strong> - Unauthorized domain registration</li>
+                    <li><strong>Cleanup</strong> - Removing old or unused registrations</li>
+                </ul>
+                
+                <h3 class="text-lg font-semibold mb-3 mt-6">Revocation Process</h3>
+                <ol class="list-decimal pl-6 mb-4">
+                    <li>Find the registration in the list</li>
+                    <li>Click the "Revoke" button for the registration</li>
+                    <li>Confirm the action in the confirmation dialog</li>
+                    <li>The registration is immediately removed from the system</li>
+                    <li>Future certificate requests for this configuration will fail</li>
+                </ol>
+                
+                <h3 class="text-lg font-semibold mb-3 mt-6">Impact of Revocation</h3>
+                <ul class="list-disc pl-6 mb-4">
+                    <li><strong>Immediate Effect</strong> - Registration is removed immediately</li>
+                    <li><strong>Certificate Requests</strong> - New certificate requests will fail</li>
+                    <li><strong>Existing Certificates</strong> - Already issued certificates continue to work</li>
+                    <li><strong>Re-registration</strong> - Domain can be registered again with new credentials</li>
+                </ul>
+                
+                <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mt-6">
+                    <p class="text-yellow-800"><strong>Note:</strong> Revoking a registration doesn't affect existing certificates, but prevents renewal and new certificate requests. Users will need to register again to continue using the service.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Search Filter Section -->
+        <section id="search-filter" class="bg-white rounded-lg shadow-lg p-6 mb-8">
+            <h2 class="text-2xl font-bold mb-4">Search & Filter</h2>
+            <div class="prose max-w-none">
+                <p class="mb-4">Use the search and filter features to quickly find specific keys or registrations.</p>
+                
+                <h3 class="text-lg font-semibold mb-3">Search Capabilities</h3>
+                <ul class="list-disc pl-6 mb-4">
+                    <li><strong>API Keys</strong> - Search by name, email, or organization</li>
+                    <li><strong>Registrations</strong> - Search by domain hint or subdomain</li>
+                    <li><strong>Real-time Filtering</strong> - Results update as you type</li>
+                    <li><strong>Case Insensitive</strong> - Search is not case-sensitive</li>
+                </ul>
+                
+                <h3 class="text-lg font-semibold mb-3 mt-6">Filter Options</h3>
+                <ul class="list-disc pl-6 mb-4">
+                    <li><strong>Active Keys Only</strong> - Show only non-revoked keys</li>
+                    <li><strong>Expired Keys</strong> - Show only expired keys</li>
+                    <li><strong>Recent Activity</strong> - Show keys/registrations from specific time periods</li>
+                    <li><strong>High Usage</strong> - Show keys with high usage counts</li>
+                </ul>
+                
+                <h3 class="text-lg font-semibold mb-3 mt-6">Search Tips</h3>
+                <ul class="list-disc pl-6 mb-4">
+                    <li><strong>Partial Matches</strong> - Use partial text to find matches</li>
+                    <li><strong>Multiple Terms</strong> - Search for multiple terms separated by spaces</li>
+                    <li><strong>Clear Filters</strong> - Use "Clear" button to reset all filters</li>
+                    <li><strong>Export Results</strong> - Download filtered results as CSV</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- Dashboard Section -->
+        <section id="dashboard" class="bg-white rounded-lg shadow-lg p-6 mb-8">
+            <h2 class="text-2xl font-bold mb-4">Dashboard Stats</h2>
+            <div class="prose max-w-none">
+                <p class="mb-4">The dashboard provides real-time statistics about service usage and health.</p>
+                
+                <h3 class="text-lg font-semibold mb-3">Key Metrics</h3>
+                <ul class="list-disc pl-6 mb-4">
+                    <li><strong>Total API Keys</strong> - All keys ever created</li>
+                    <li><strong>Active Keys</strong> - Currently valid keys</li>
+                    <li><strong>Total Registrations</strong> - All domain registrations</li>
+                    <li><strong>Recent Activity</strong> - Registrations in last 24 hours</li>
+                    <li><strong>Top Users</strong> - Most active API key holders</li>
+                </ul>
+                
+                <h3 class="text-lg font-semibold mb-3 mt-6">Health Monitoring</h3>
+                <ul class="list-disc pl-6 mb-4">
+                    <li><strong>Service Status</strong> - Overall system health</li>
+                    <li><strong>Database Status</strong> - Database connectivity and performance</li>
+                    <li><strong>ACME-DNS Status</strong> - Backend service availability</li>
+                    <li><strong>Rate Limit Status</strong> - Current rate limiting state</li>
+                </ul>
+                
+                <h3 class="text-lg font-semibold mb-3 mt-6">Using Dashboard Data</h3>
+                <ul class="list-disc pl-6 mb-4">
+                    <li><strong>Capacity Planning</strong> - Monitor growth trends</li>
+                    <li><strong>User Support</strong> - Identify users needing help</li>
+                    <li><strong>Security Monitoring</strong> - Watch for unusual activity</li>
+                    <li><strong>Performance Tracking</strong> - Monitor service performance</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- API Reference Section -->
+        <section id="api-reference" class="bg-white rounded-lg shadow-lg p-6 mb-8">
+            <h2 class="text-2xl font-bold mb-4">Admin API Reference</h2>
+            <div class="prose max-w-none">
+                <p class="mb-4">The admin interface uses these API endpoints. All require the master API key in the Authorization header.</p>
+                
+                <h3 class="text-lg font-semibold mb-3">Authentication</h3>
+                <div class="bg-gray-100 p-3 rounded font-mono text-sm mb-4">
+                    Authorization: Bearer &lt;master-api-key&gt;
+                </div>
+                
+                <h3 class="text-lg font-semibold mb-3 mt-6">API Endpoints</h3>
+                <div class="space-y-4">
+                    <div class="border rounded-lg p-4">
+                        <h4 class="font-medium text-lg">POST /admin/keys</h4>
+                        <p class="text-gray-600 mb-2">Create a new API key</p>
+                        <div class="bg-gray-100 p-3 rounded font-mono text-sm">
+                            {<br>
+                            &nbsp;&nbsp;"name": "User Name",<br>
+                            &nbsp;&nbsp;"email": "user@example.com",<br>
+                            &nbsp;&nbsp;"organization": "ACME Corp",<br>
+                            &nbsp;&nbsp;"expires_days": 365<br>
+                            }
+                        </div>
+                    </div>
+                    
+                    <div class="border rounded-lg p-4">
+                        <h4 class="font-medium text-lg">GET /admin/keys</h4>
+                        <p class="text-gray-600 mb-2">List all API keys</p>
+                        <p class="text-sm text-gray-500">Returns array of key objects without the actual key values</p>
+                    </div>
+                    
+                    <div class="border rounded-lg p-4">
+                        <h4 class="font-medium text-lg">DELETE /admin/keys/{key_id}</h4>
+                        <p class="text-gray-600 mb-2">Revoke an API key</p>
+                        <p class="text-sm text-gray-500">Permanently disables the specified key</p>
+                    </div>
+                    
+                    <div class="border rounded-lg p-4">
+                        <h4 class="font-medium text-lg">GET /admin/registrations</h4>
+                        <p class="text-gray-600 mb-2">List all registrations</p>
+                        <p class="text-sm text-gray-500">Returns last 100 registrations with key information</p>
+                    </div>
+                    
+                    <div class="border rounded-lg p-4">
+                        <h4 class="font-medium text-lg">DELETE /admin/registrations/{id}</h4>
+                        <p class="text-gray-600 mb-2">Revoke a registration</p>
+                        <p class="text-sm text-gray-500">Removes registration from system</p>
+                    </div>
+                    
+                    <div class="border rounded-lg p-4">
+                        <h4 class="font-medium text-lg">GET /admin/stats</h4>
+                        <p class="text-gray-600 mb-2">Get service statistics</p>
+                        <p class="text-sm text-gray-500">Returns usage metrics and health information</p>
+                    </div>
+                </div>
+                
+                <h3 class="text-lg font-semibold mb-3 mt-6">Rate Limits</h3>
+                <ul class="list-disc pl-6 mb-4">
+                    <li><strong>Key Creation:</strong> 10 per hour</li>
+                    <li><strong>Key Listing:</strong> 30 per hour</li>
+                    <li><strong>Key Revocation:</strong> 20 per hour</li>
+                    <li><strong>Registration Listing:</strong> 60 per hour</li>
+                    <li><strong>Registration Revocation:</strong> 30 per hour</li>
+                    <li><strong>Statistics:</strong> 100 per hour</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- Troubleshooting Section -->
+        <section id="troubleshooting" class="bg-white rounded-lg shadow-lg p-6 mb-8">
+            <h2 class="text-2xl font-bold mb-4">Troubleshooting</h2>
+            <div class="prose max-w-none">
+                <h3 class="text-lg font-semibold mb-3">Common Issues</h3>
+                
+                <div class="space-y-6">
+                    <div class="border-l-4 border-red-400 pl-4">
+                        <h4 class="font-medium text-lg">Login Failures</h4>
+                        <ul class="list-disc pl-6 mt-2">
+                            <li>Verify the master API key is correct</li>
+                            <li>Check that the key hasn't been changed</li>
+                            <li>Clear browser cache and try again</li>
+                            <li>Check browser console for error messages</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="border-l-4 border-red-400 pl-4">
+                        <h4 class="font-medium text-lg">API Key Creation Fails</h4>
+                        <ul class="list-disc pl-6 mt-2">
+                            <li>Check rate limits - you may be creating keys too quickly</li>
+                            <li>Verify all required fields are filled</li>
+                            <li>Ensure email format is valid if provided</li>
+                            <li>Check expiration days are within valid range (1-3650)</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="border-l-4 border-red-400 pl-4">
+                        <h4 class="font-medium text-lg">Interface Not Loading</h4>
+                        <ul class="list-disc pl-6 mt-2">
+                            <li>Check that all services are running (docker-compose ps)</li>
+                            <li>Verify Traefik routing configuration</li>
+                            <li>Check nginx proxy configuration</li>
+                            <li>Look at browser network tab for failed requests</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="border-l-4 border-red-400 pl-4">
+                        <h4 class="font-medium text-lg">Data Not Updating</h4>
+                        <ul class="list-disc pl-6 mt-2">
+                            <li>Click refresh to update data manually</li>
+                            <li>Check if database connection is healthy</li>
+                            <li>Verify registration service is responding</li>
+                            <li>Look for rate limiting errors in the logs</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <h3 class="text-lg font-semibold mb-3 mt-6">Diagnostic Commands</h3>
+                <div class="bg-gray-900 text-green-400 p-4 rounded-lg font-mono text-sm mb-4">
+                    <pre># Check service status
+docker-compose ps
+
+# View logs
+docker-compose logs registration-api
+
+# Test API health
+curl https://acmedns.realworld.net.au/api/health
+
+# Check rate limits
+curl -H "Authorization: Bearer $MASTER_KEY" \
+  https://acmedns.realworld.net.au/admin/stats</pre>
+                </div>
+                
+                <h3 class="text-lg font-semibold mb-3 mt-6">Getting Support</h3>
+                <ol class="list-decimal pl-6 mb-4">
+                    <li>Check the service health endpoint</li>
+                    <li>Review application logs for errors</li>
+                    <li>Verify configuration files</li>
+                    <li>Document specific error messages</li>
+                    <li>Contact system administrator with details</li>
+                </ol>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white py-8">
+        <div class="container mx-auto px-4 text-center">
+            <p class="text-gray-400">RWTS ACME DNS Admin Interface</p>
+            <p class="text-sm text-gray-500 mt-2">
+                <a href="/admin/" class="hover:text-white">Admin Interface</a> |
+                <a href="/api/health" class="hover:text-white ml-2">Service Status</a> |
+                <a href="/docs" class="hover:text-white ml-2">User Documentation</a>
+            </p>
+        </div>
+    </footer>
+</body>
+</html>

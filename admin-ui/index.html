@@ -70,8 +70,9 @@
                         <h1 class="text-3xl font-bold">RWTS acme-dns Admin</h1>
                         <p class="text-blue-200">API Key and Registration Management</p>
                     </div>
-                    <div>
-                        <span class="text-blue-200 mr-4">Welcome, <span x-text="loginForm.username"></span></span>
+                    <div class="flex items-center space-x-4">
+                        <a href="/admin/docs" class="text-blue-200 hover:text-white underline">Documentation</a>
+                        <span class="text-blue-200">Welcome, <span x-text="loginForm.username"></span></span>
                         <button @click="logout()" class="bg-blue-700 hover:bg-blue-800 px-4 py-2 rounded text-sm">
                             Logout
                         </button>
