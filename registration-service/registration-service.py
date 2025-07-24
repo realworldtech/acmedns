@@ -240,41 +240,45 @@ def create_api_key():
                     return jsonify({"error": "Expiration days must be between 1 and 3650"}), 400
             except (ValueError, TypeError):
                 return jsonify({"error": "Invalid expiration days"}), 400
-    
-    # Generate new key
-    api_key = generate_api_key()
-    key_id = f"key_{secrets.token_hex(8)}"
-    key_hash = hash_key(api_key)
-    
-    # Calculate expiration
-    expires_at = None
-    if expires_days:
-        expires_at = (datetime.utcnow() + timedelta(days=expires_days)).isoformat()
-    
-    # Store in database
-    db = get_db()
-    try:
-        db.execute('''
-            INSERT INTO api_keys (key_id, key_hash, name, email, organization, expires_at)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ''', (key_id, key_hash, name, email, organization, expires_at))
-        db.commit()
         
-        app.logger.info(f"Created API key: {key_id} for {name} ({organization})")
+        # Generate new key
+        api_key = generate_api_key()
+        key_id = f"key_{secrets.token_hex(8)}"
+        key_hash = hash_key(api_key)
         
-        return jsonify({
-            "key_id": key_id,
-            "api_key": api_key,  # Only returned once!
-            "name": name,
-            "expires_at": expires_at,
-            "message": "Store this API key securely - it will not be shown again"
-        }), 201
+        # Calculate expiration
+        expires_at = None
+        if expires_days:
+            expires_at = (datetime.utcnow() + timedelta(days=expires_days)).isoformat()
         
-    except sqlite3.IntegrityError:
-        app.logger.error(f"Database integrity error creating API key for {name}")
-        return jsonify({"error": "Key generation failed, please try again"}), 500
+        # Store in database
+        db = get_db()
+        try:
+            db.execute('''
+                INSERT INTO api_keys (key_id, key_hash, name, email, organization, expires_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', (key_id, key_hash, name, email, organization, expires_at))
+            db.commit()
+            
+            app.logger.info(f"Created API key: {key_id} for {name} ({organization})")
+            
+            return jsonify({
+                "key_id": key_id,
+                "api_key": api_key,  # Only returned once!
+                "name": name,
+                "expires_at": expires_at,
+                "message": "Store this API key securely - it will not be shown again"
+            }), 201
+            
+        except sqlite3.IntegrityError:
+            app.logger.error(f"Database integrity error creating API key for {name}")
+            return jsonify({"error": "Key generation failed, please try again"}), 500
+        except Exception as e:
+            app.logger.error(f"Unexpected error creating API key: {e}")
+            return jsonify({"error": "Internal server error"}), 500
+    
     except Exception as e:
-        app.logger.error(f"Unexpected error creating API key: {e}")
+        app.logger.error(f"Unexpected error in create_api_key: {e}")
         return jsonify({"error": "Internal server error"}), 500
 
 @app.route('/admin/keys', methods=['GET'])
