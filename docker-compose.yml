@@ -43,6 +43,13 @@ services:
       - "traefik.tcp.routers.acme-dns-tcp.entrypoints=dns-tcp"
       - "traefik.tcp.routers.acme-dns-tcp.service=acme-dns-tcp"
       - "traefik.tcp.services.acme-dns-tcp.loadbalancer.server.port=53"
+      # HTTP API endpoints for ACME clients (register, update)
+      - "traefik.http.routers.acme-dns-http.rule=Host(`acmedns.realworld.net.au`) && (Path(`/register`) || Path(`/update`))"
+      - "traefik.http.routers.acme-dns-http.tls=true"
+      - "traefik.http.routers.acme-dns-http.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.acme-dns-http.service=acme-dns-http"
+      - "traefik.http.services.acme-dns-http.loadbalancer.server.port=8080"
+      - "traefik.http.routers.acme-dns-http.priority=100"
 
   registration-api:
     build: ./registration-service
@@ -64,6 +71,7 @@ services:
       - "traefik.http.services.registration-api.loadbalancer.server.port=5000"
       - "traefik.http.routers.registration-api.middlewares=registration-api-stripprefix"
       - "traefik.http.middlewares.registration-api-stripprefix.stripprefix.prefixes=/api"
+      - "traefik.http.routers.registration-api.priority=50"
 
   # Admin web interface
   admin-ui:
@@ -98,6 +106,7 @@ services:
       - "traefik.http.routers.user-ui.rule=Host(`acmedns.realworld.net.au`)"
       - "traefik.http.routers.user-ui.tls=true"
       - "traefik.http.routers.user-ui.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.user-ui.priority=10"
 
 volumes:
   traefik-certs:
