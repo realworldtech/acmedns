@@ -10,6 +10,9 @@ import re
 from datetime import datetime, timedelta
 from flask import Flask, request, jsonify, g
 from functools import wraps
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+from flask_limiter.errors import RateLimitExceeded
 
 app = Flask(__name__)
 
@@ -17,6 +20,15 @@ app = Flask(__name__)
 ACME_DNS_URL = "http://acme-dns:8080"
 DATABASE_PATH = "/data/registrations.db"
 MASTER_KEY = os.getenv("MASTER_API_KEY", "")
+
+# Rate limiting configuration
+limiter = Limiter(
+    app=app,
+    key_func=get_remote_address,
+    default_limits=["200 per day", "50 per hour"],
+    storage_uri="memory://",  # Use in-memory storage for simplicity
+    headers_enabled=True,  # Add rate limit headers to responses
+)
 
 if not MASTER_KEY:
     raise ValueError("MASTER_API_KEY environment variable is required")
@@ -188,9 +200,20 @@ def close_db_connection(exception):
     """Close database connection after request"""
     close_db(exception)
 
+# Rate limiting error handler
+@app.errorhandler(RateLimitExceeded)
+def handle_rate_limit_exceeded(e):
+    """Handle rate limit exceeded errors"""
+    return jsonify({
+        "error": "Rate limit exceeded",
+        "message": f"You have exceeded the rate limit. Try again later.",
+        "retry_after": e.retry_after
+    }), 429
+
 # Master key endpoints (for internal management)
 
 @app.route('/admin/keys', methods=['POST'])
+@limiter.limit("10 per hour")  # Strict limit for key creation
 @require_master_key
 def create_api_key():
     """Create a new API key"""
@@ -255,6 +278,7 @@ def create_api_key():
         return jsonify({"error": "Internal server error"}), 500
 
 @app.route('/admin/keys', methods=['GET'])
+@limiter.limit("30 per hour")  # Moderate limit for listing
 @require_master_key
 def list_api_keys():
     """List all API keys (without the actual keys)"""
@@ -269,6 +293,7 @@ def list_api_keys():
     return jsonify([dict(key) for key in keys])
 
 @app.route('/admin/keys/<key_id>', methods=['DELETE'])
+@limiter.limit("20 per hour")  # Moderate limit for revocation
 @require_master_key
 def revoke_api_key(key_id):
     """Revoke an API key"""
@@ -285,6 +310,7 @@ def revoke_api_key(key_id):
     return jsonify({"message": "API key revoked"})
 
 @app.route('/admin/registrations', methods=['GET'])
+@limiter.limit("60 per hour")  # Higher limit for monitoring
 @require_master_key
 def list_registrations():
     """List all registrations"""
@@ -300,6 +326,7 @@ def list_registrations():
     return jsonify([dict(reg) for reg in registrations])
 
 @app.route('/admin/registrations/<int:registration_id>', methods=['DELETE'])
+@limiter.limit("30 per hour")  # Moderate limit for registration deletion
 @require_master_key
 def revoke_registration(registration_id):
     """Revoke/delete a registration"""
@@ -329,6 +356,7 @@ def revoke_registration(registration_id):
     return jsonify({"message": "Registration revoked successfully"})
 
 @app.route('/admin/stats', methods=['GET'])
+@limiter.limit("100 per hour")  # High limit for dashboard/monitoring
 @require_master_key
 def get_stats():
     """Get service statistics"""
@@ -364,6 +392,7 @@ def get_stats():
 # Public endpoints (require API key)
 
 @app.route('/register', methods=['POST'])
+@limiter.limit("10 per minute")  # Strict limit to prevent abuse
 @require_api_key
 def register():
     """Register a new domain with acme-dns"""
@@ -410,6 +439,7 @@ def register():
         return jsonify({"error": "Internal server error"}), 500
 
 @app.route('/health', methods=['GET'])
+@limiter.limit("30 per minute")  # Allow frequent health checks
 def health():
     """Health check endpoint"""
     try:
@@ -434,7 +464,8 @@ def health():
             "error": "Service check failed"
         }), 500
 
-@app.route('/info', methods=['GET'])
+@app.route('/info', methods=['GET']) 
+@limiter.limit("30 per minute")  # Moderate limit for info requests
 @require_api_key
 def get_key_info():
     """Get information about the current API key"""
@@ -458,6 +489,7 @@ def get_key_info():
     return jsonify(result)
 
 @app.route('/lookup', methods=['POST'])
+@limiter.limit("20 per minute")  # Moderate limit for config lookups
 @require_api_key
 def lookup_config():
     """Look up ACME DNS configuration for a domain"""
