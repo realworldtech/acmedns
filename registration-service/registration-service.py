@@ -506,55 +506,55 @@ def lookup_config():
         
         if not validate_domain(domain):
             return jsonify({"error": "Invalid domain format"}), 400
-    
-    db = get_db()
-    
-    # Find registrations for this API key and domain
-    escaped_domain = escape_like_pattern(domain)
-    registrations = db.execute('''
-        SELECT r.*, k.name as key_name
-        FROM registrations r
-        JOIN api_keys k ON r.api_key_id = k.key_id
-        WHERE r.api_key_id = ? AND (r.domain_hint = ? OR r.domain_hint LIKE ? ESCAPE '\\')
-        ORDER BY r.created_at DESC
-    ''', (g.api_key_id, domain, f'%{escaped_domain}%')).fetchall()
-    
-    if not registrations:
-        return jsonify({
-            "error": "No registrations found for this domain",
+        
+        db = get_db()
+        
+        # Find registrations for this API key and domain
+        escaped_domain = escape_like_pattern(domain)
+        registrations = db.execute('''
+            SELECT r.*, k.name as key_name
+            FROM registrations r
+            JOIN api_keys k ON r.api_key_id = k.key_id
+            WHERE r.api_key_id = ? AND (r.domain_hint = ? OR r.domain_hint LIKE ? ESCAPE '\\')
+            ORDER BY r.created_at DESC
+        ''', (g.api_key_id, domain, f'%{escaped_domain}%')).fetchall()
+        
+        if not registrations:
+            return jsonify({
+                "error": "No registrations found for this domain",
+                "domain": domain,
+                "suggestion": "You may need to register this domain first using the /register endpoint"
+            }), 404
+        
+        # Get the most recent registration
+        latest_reg = registrations[0]
+        
+        # Return configuration information
+        config = {
             "domain": domain,
-            "suggestion": "You may need to register this domain first using the /register endpoint"
-        }), 404
-    
-    # Get the most recent registration
-    latest_reg = registrations[0]
-    
-    # Return configuration information
-    config = {
-        "domain": domain,
-        "acme_dns_server": "acmedns.realworld.net.au",
-        "subdomain": latest_reg['subdomain'],
-        "cname_record": {
-            "name": f"_acme-challenge.{domain}",
-            "value": f"{latest_reg['subdomain']}.acmedns.realworld.net.au",
-            "type": "CNAME"
-        },
-        "registration_info": {
-            "registered_at": latest_reg['created_at'],
-            "key_name": latest_reg['key_name'],
-            "total_registrations": len(registrations)
-        },
-        "instructions": {
-            "step1": f"Add this CNAME record to your DNS: _acme-challenge.{domain} CNAME {latest_reg['subdomain']}.acmedns.realworld.net.au",
-            "step2": "Configure your ACME client to use DNS-01 challenge with acme-dns",
-            "step3": "Use the subdomain and your API key for certificate requests"
+            "acme_dns_server": "acmedns.realworld.net.au",
+            "subdomain": latest_reg['subdomain'],
+            "cname_record": {
+                "name": f"_acme-challenge.{domain}",
+                "value": f"{latest_reg['subdomain']}.acmedns.realworld.net.au",
+                "type": "CNAME"
+            },
+            "registration_info": {
+                "registered_at": latest_reg['created_at'],
+                "key_name": latest_reg['key_name'],
+                "total_registrations": len(registrations)
+            },
+            "instructions": {
+                "step1": f"Add this CNAME record to your DNS: _acme-challenge.{domain} CNAME {latest_reg['subdomain']}.acmedns.realworld.net.au",
+                "step2": "Configure your ACME client to use DNS-01 challenge with acme-dns",
+                "step3": "Use the subdomain and your API key for certificate requests"
+            }
         }
-    }
-    
+        
         app.logger.info(f"Config lookup: key={g.api_key_name}, domain={domain}, subdomain={latest_reg['subdomain']}")
         
         return jsonify(config)
-    
+        
     except Exception as e:
         app.logger.error(f"Error in lookup_config: {e}")
         return jsonify({"error": "Internal server error"}), 500
