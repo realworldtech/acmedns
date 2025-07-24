@@ -43,8 +43,8 @@ services:
       - "traefik.tcp.routers.acme-dns-tcp.entrypoints=dns-tcp"
       - "traefik.tcp.routers.acme-dns-tcp.service=acme-dns-tcp"
       - "traefik.tcp.services.acme-dns-tcp.loadbalancer.server.port=53"
-      # HTTP API endpoints for ACME clients (register, update)
-      - "traefik.http.routers.acme-dns-http.rule=Host(`acmedns.realworld.net.au`) && (Path(`/register`) || Path(`/update`))"
+      # HTTP API endpoint for ACME client DNS updates only
+      - "traefik.http.routers.acme-dns-http.rule=Host(`acmedns.realworld.net.au`) && PathPrefix(`/update`)"
       - "traefik.http.routers.acme-dns-http.tls=true"
       - "traefik.http.routers.acme-dns-http.tls.certresolver=letsencrypt"
       - "traefik.http.routers.acme-dns-http.service=acme-dns-http"
