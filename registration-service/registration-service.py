@@ -111,6 +111,13 @@ def validate_domain(domain):
         )
         return bool(domain_pattern.match(domain))
 
+def get_cname_domain(domain):
+    """Get the correct domain for CNAME record generation"""
+    # For wildcard domains (*.example.com), use the base domain (example.com)
+    if domain.startswith('*.'):
+        return domain[2:]
+    return domain
+
 def validate_email(email):
     """Basic email validation"""
     if not email:
@@ -541,13 +548,16 @@ def lookup_config():
         # Get the most recent registration
         latest_reg = registrations[0]
         
+        # Get the correct domain for CNAME (remove wildcard prefix if present)
+        cname_domain = get_cname_domain(domain)
+        
         # Return configuration information
         config = {
             "domain": domain,
             "acme_dns_server": "acmedns.realworld.net.au",
             "subdomain": latest_reg['subdomain'],
             "cname_record": {
-                "name": f"_acme-challenge.{domain}",
+                "name": f"_acme-challenge.{cname_domain}",
                 "value": f"{latest_reg['subdomain']}.acmedns.realworld.net.au",
                 "type": "CNAME"
             },
@@ -557,7 +567,7 @@ def lookup_config():
                 "total_registrations": len(registrations)
             },
             "instructions": {
-                "step1": f"Add this CNAME record to your DNS: _acme-challenge.{domain} CNAME {latest_reg['subdomain']}.acmedns.realworld.net.au",
+                "step1": f"Add this CNAME record to your DNS: _acme-challenge.{cname_domain} CNAME {latest_reg['subdomain']}.acmedns.realworld.net.au",
                 "step2": "Configure your ACME client to use DNS-01 challenge with acme-dns",
                 "step3": "Use the subdomain and your API key for certificate requests"
             }
