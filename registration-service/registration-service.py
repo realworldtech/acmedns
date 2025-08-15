@@ -89,15 +89,27 @@ def escape_like_pattern(pattern):
     return pattern.replace('%', '\\%').replace('_', '\\_').replace('\\', '\\\\')
 
 def validate_domain(domain):
-    """Validate domain name format"""
+    """Validate domain name format including wildcards"""
     if not domain or len(domain) > 253:
         return False
     
-    # Basic domain regex - allows valid domain characters
-    domain_pattern = re.compile(
-        r'^(?!-)[A-Za-z0-9-]{1,63}(?<!-)(\.[A-Za-z0-9-]{1,63})*$'
-    )
-    return bool(domain_pattern.match(domain))
+    # Handle wildcard domains (*.example.com)
+    if domain.startswith('*.'):
+        # Remove wildcard prefix and validate the base domain
+        base_domain = domain[2:]
+        if not base_domain:
+            return False
+        # Validate the base domain part
+        domain_pattern = re.compile(
+            r'^(?!-)[A-Za-z0-9-]{1,63}(?<!-)(\.[A-Za-z0-9-]{1,63})*$'
+        )
+        return bool(domain_pattern.match(base_domain))
+    else:
+        # Regular domain validation - allows valid domain characters
+        domain_pattern = re.compile(
+            r'^(?!-)[A-Za-z0-9-]{1,63}(?<!-)(\.[A-Za-z0-9-]{1,63})*$'
+        )
+        return bool(domain_pattern.match(domain))
 
 def validate_email(email):
     """Basic email validation"""
