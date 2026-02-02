@@ -237,7 +237,7 @@ def handle_rate_limit_exceeded(e):
 def create_api_key():
     """Create a new API key"""
     try:
-        data = request.get_json() or {}
+        data = request.get_json(silent=True) or {}
         
         # Sanitize and validate inputs
         name = sanitize_string(data.get('name', ''), 100)
@@ -420,7 +420,7 @@ def get_stats():
 def register():
     """Register a new domain with acme-dns"""
     try:
-        data = request.get_json() or {}
+        data = request.get_json(silent=True) or {}
         domain_hint = sanitize_string(data.get('domain', 'unknown'), 253)
         client_ip = request.headers.get('X-Forwarded-For', request.remote_addr)
         
@@ -517,7 +517,7 @@ def get_key_info():
 def lookup_config():
     """Look up ACME DNS configuration for a domain"""
     try:
-        data = request.get_json() or {}
+        data = request.get_json(silent=True) or {}
         domain = sanitize_string(data.get('domain', ''))
         
         if not domain:
